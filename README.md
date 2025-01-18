@@ -15,7 +15,7 @@ An open source Minecraft launcher library written in Rust.
 
 ## About The Project
 
-![Product Screenshot](https://i.imgur.com/uQ13xHc.png)
+![Product Screenshot](https://excited-eagle.static.domains/Cardinal.png)
 
 Lyceris is written with functional programming paradigm to achieve simplicity. It supports Microsoft authentication, loaders like Fabric, Quilt (more will be implemented soon), multi-threaded control system and download parallelism. It also automatically downloads necessary Java version. Library name comes from a character from Sword Art Online anime.
 
