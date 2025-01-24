@@ -1,11 +1,20 @@
-use std::{fs::File, io::Read, path::Path};
+use std::{
+    fs::File,
+    io::{Read, Seek},
+    path::Path,
+};
 use tokio::{fs::create_dir_all, io::AsyncWriteExt};
 use zip::read::ZipArchive;
+
+pub trait ReadSeek: Read + Seek + Send + 'static {}
+
+impl<T: Read + Seek + Send + 'static> ReadSeek for T {}
 
 pub async fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate::Result<()> {
     // Open the ZIP file synchronously
     let file = File::open(zip_path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let reader = Box::new(file) as Box<dyn ReadSeek>;
+    let mut archive = ZipArchive::new(reader)?;
 
     tokio::fs::create_dir_all(&output_dir).await?;
 
@@ -32,7 +41,8 @@ pub async fn extract_specific_file<P: AsRef<Path>>(
     output_file: &P,
 ) -> crate::Result<()> {
     let file = File::open(zip_path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let reader = Box::new(file) as Box<dyn ReadSeek>;
+    let mut archive = ZipArchive::new(reader)?;
 
     if let Some(parent) = &output_file.as_ref().parent() {
         create_dir_all(parent).await?;
@@ -67,7 +77,8 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
     output_dir: &P,
 ) -> crate::Result<()> {
     let file = File::open(zip_path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let reader = Box::new(file) as Box<dyn ReadSeek>;
+    let mut archive = ZipArchive::new(reader)?;
 
     tokio::fs::create_dir_all(&output_dir).await?;
 
@@ -108,7 +119,8 @@ pub async fn read_file_from_jar<P: AsRef<Path>>(
     file_name: &str,
 ) -> crate::Result<String> {
     let file = File::open(zip_path)?;
-    let mut archive = ZipArchive::new(file)?;
+    let reader = Box::new(file) as Box<dyn ReadSeek>;
+    let mut archive = ZipArchive::new(reader)?;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
