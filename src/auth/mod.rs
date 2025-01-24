@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod microsoft;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum AuthMethod {
     Microsoft {
         access_token: String,

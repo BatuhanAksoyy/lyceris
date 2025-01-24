@@ -9,7 +9,7 @@ use crate::{auth::AuthMethod, json::version::meta::vanilla::JavaVersion};
 
 use super::loader::{Loader, Loaders};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Memory {
     Megabyte(u64),
     Gigabyte(u16),
@@ -29,7 +29,7 @@ pub struct Config<T: Loader> {
     pub custom_args: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ConfigBuilder {
     pub game_dir: PathBuf,
     pub version: String,

@@ -36,7 +36,7 @@ impl Loader for () {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Loaders {
     Fabric(String),
     Quilt(String),
