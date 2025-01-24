@@ -11,24 +11,22 @@ pub trait ReadSeek: Read + Seek + Send + 'static {}
 impl<T: Read + Seek + Send + 'static> ReadSeek for T {}
 
 pub async fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate::Result<()> {
-    // Open the ZIP file synchronously
     let file = File::open(zip_path)?;
-    let reader = Box::new(file) as Box<dyn ReadSeek>;
-    let mut archive = ZipArchive::new(reader)?;
 
-    tokio::fs::create_dir_all(&output_dir).await?;
+    create_dir_all(output_dir).await?;
+
+    let mut archive = ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
-        let output_path = output_dir.as_ref().join(file.name());
+        let file_path = file.mangled_name();
 
-        if file.name().ends_with('/') {
-            tokio::fs::create_dir_all(&output_path).await?;
+        if file.is_dir() {
+            let directory_path = &output_dir.as_ref().join(file_path);
+            std::fs::create_dir_all(directory_path)?;
         } else {
-            let mut output_file = tokio::fs::File::create(&output_path).await?;
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)?;
-            output_file.write_all(&buffer).await?;
+            let mut file_buffer = File::create(output_dir.as_ref().join(file_path))?;
+            std::io::copy(&mut file, &mut file_buffer)?;
         }
     }
 
@@ -41,8 +39,7 @@ pub async fn extract_specific_file<P: AsRef<Path>>(
     output_file: &P,
 ) -> crate::Result<()> {
     let file = File::open(zip_path)?;
-    let reader = Box::new(file) as Box<dyn ReadSeek>;
-    let mut archive = ZipArchive::new(reader)?;
+    let mut archive = ZipArchive::new(file)?;
 
     if let Some(parent) = &output_file.as_ref().parent() {
         create_dir_all(parent).await?;
@@ -54,10 +51,8 @@ pub async fn extract_specific_file<P: AsRef<Path>>(
         if file.name() == file_name {
             file_found = true;
 
-            let mut output_file = tokio::fs::File::create(&output_file).await?;
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)?;
-            output_file.write_all(&buffer).await?;
+            let mut file_buffer = File::create(output_file)?;
+            std::io::copy(&mut file, &mut file_buffer)?;
             break;
         }
     }
@@ -77,14 +72,14 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
     output_dir: &P,
 ) -> crate::Result<()> {
     let file = File::open(zip_path)?;
-    let reader = Box::new(file) as Box<dyn ReadSeek>;
-    let mut archive = ZipArchive::new(reader)?;
+    let mut archive = ZipArchive::new(file)?;
 
-    tokio::fs::create_dir_all(&output_dir).await?;
+    create_dir_all(&output_dir).await?;
 
     let mut dir_found = false;
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
+        let file_path = file.mangled_name();
         if file.name().starts_with(dir_name) {
             dir_found = true;
             let relative_path = file.name().strip_prefix(dir_name).unwrap_or(file.name());
@@ -96,10 +91,8 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
                 if let Some(parent) = output_path.parent() {
                     tokio::fs::create_dir_all(parent).await?;
                 }
-                let mut output_file = tokio::fs::File::create(&output_path).await?;
-                let mut buffer = Vec::new();
-                file.read_to_end(&mut buffer)?;
-                output_file.write_all(&buffer).await?;
+                let mut file_buffer = File::create(output_dir.as_ref().join(file_path))?;
+                std::io::copy(&mut file, &mut file_buffer)?;
             }
         }
     }
@@ -123,11 +116,13 @@ pub async fn read_file_from_jar<P: AsRef<Path>>(
     let mut archive = ZipArchive::new(reader)?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
+        let file = archive.by_index(i)?;
+        let file_path = file.mangled_name();
         if file.name() == file_name {
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)?;
-            return Ok(String::from_utf8(buffer)?);
+            let mut buffer = String::new();
+            let mut file = File::create(file_path)?;
+            file.read_to_string(&mut buffer)?;
+            return Ok(buffer);
         }
     }
 
