@@ -35,7 +35,8 @@ struct Version {
     stable: bool,
 }
 
-pub struct Fabric(pub &'static str);
+#[derive(Serialize, Deserialize)]
+pub struct Fabric(pub String);
 
 impl Loader for Fabric {
     async fn merge<T: Loader>(

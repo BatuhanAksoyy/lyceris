@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{auth::AuthMethod, json::version::meta::vanilla::JavaVersion};
 
-use super::loader::Loader;
+use super::loader::{Loader, Loaders};
 
 #[derive(Serialize, Deserialize)]
 pub enum Memory {
@@ -37,7 +37,7 @@ pub struct ConfigBuilder {
     pub memory: Option<Memory>,
     pub version_name: Option<String>,
     pub java_version: Option<String>,
-    pub loader: Option<(String, String)>,
+    pub loader: Option<Loaders>,
     pub runtime_dir: Option<PathBuf>,
     pub custom_java_args: Vec<String>,
     pub custom_args: Vec<String>,
@@ -89,6 +89,11 @@ impl ConfigBuilder {
 
     pub fn custom_args(mut self, custom_args: Vec<String>) -> Self {
         self.custom_args = custom_args;
+        self
+    }
+
+    pub fn loader(mut self, loader: Loaders) -> Self {
+        self.loader = Some(loader);
         self
     }
 

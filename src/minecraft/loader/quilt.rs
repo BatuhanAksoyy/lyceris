@@ -34,7 +34,8 @@ struct Version {
     stable: bool,
 }
 
-pub struct Quilt(pub &'static str);
+#[derive(Serialize, Deserialize)]
+pub struct Quilt(pub String);
 
 impl Loader for Quilt {
     async fn merge<T: Loader>(

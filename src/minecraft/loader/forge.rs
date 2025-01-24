@@ -59,7 +59,8 @@ pub struct Data {
     pub server: String,
 }
 
-pub struct Forge(pub &'static str);
+#[derive(Serialize, Deserialize)]
+pub struct Forge(pub String);
 
 impl Loader for Forge {
     async fn merge<T: Loader>(

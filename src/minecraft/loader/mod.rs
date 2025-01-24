@@ -1,4 +1,8 @@
 #![allow(async_fn_in_trait)]
+use fabric::Fabric;
+use quilt::Quilt;
+use serde::{Deserialize, Serialize};
+
 use crate::json::version::meta::vanilla::VersionMeta;
 
 use super::{config::Config, emitter::Emitter};
@@ -30,4 +34,11 @@ impl Loader for () {
     fn get_version(&self) -> String {
         "".to_string()
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Loaders {
+    Fabric(String),
+    Quilt(String),
+    Forge(String)
 }
