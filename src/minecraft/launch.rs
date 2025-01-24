@@ -191,6 +191,7 @@ pub async fn launch<T: Loader>(
     let mut child = Command::new(java_path)
         .args(arguments)
         .stdout(Stdio::piped())
+        .creation_flags(0x08000000)
         .current_dir(&config.game_dir)
         .spawn()?;
 
