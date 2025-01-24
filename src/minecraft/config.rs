@@ -31,16 +31,16 @@ pub struct Config<T: Loader> {
 
 #[derive(Serialize, Deserialize)]
 pub struct ConfigBuilder {
-    game_dir: PathBuf,
-    version: String,
-    authentication: AuthMethod,
-    memory: Option<Memory>,
-    version_name: Option<String>,
-    java_version: Option<String>,
-    loader: Option<String>,
-    runtime_dir: Option<PathBuf>,
-    custom_java_args: Vec<String>,
-    custom_args: Vec<String>,
+    pub game_dir: PathBuf,
+    pub version: String,
+    pub authentication: AuthMethod,
+    pub memory: Option<Memory>,
+    pub version_name: Option<String>,
+    pub java_version: Option<String>,
+    pub loader: Option<String>,
+    pub runtime_dir: Option<PathBuf>,
+    pub custom_java_args: Vec<String>,
+    pub custom_args: Vec<String>,
 }
 
 impl ConfigBuilder {
