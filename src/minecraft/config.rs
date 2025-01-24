@@ -37,7 +37,7 @@ pub struct ConfigBuilder {
     pub memory: Option<Memory>,
     pub version_name: Option<String>,
     pub java_version: Option<String>,
-    pub loader: Option<String>,
+    pub loader: Option<(String, String)>,
     pub runtime_dir: Option<PathBuf>,
     pub custom_java_args: Vec<String>,
     pub custom_args: Vec<String>,
