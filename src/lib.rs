@@ -15,9 +15,7 @@ mod tests {
 
     use crate::{
         auth::AuthMethod,
-        minecraft::{
-            config::ConfigBuilder, emitter::Emitter, install::install, launch::launch,
-        },
+        minecraft::{config::ConfigBuilder, emitter::Emitter, install::install, launch::launch},
     };
 
     #[tokio::test]
@@ -25,9 +23,9 @@ mod tests {
         let current_dir = current_dir().unwrap();
         let config = ConfigBuilder::new(
             current_dir.join("target").join("game"),
-            "1.16.5",
+            "1.16.5".to_string(),
             AuthMethod::Offline {
-                username: "Miate",
+                username: "Miate".to_string(),
                 uuid: None,
             },
         )

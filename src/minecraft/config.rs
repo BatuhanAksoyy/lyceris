@@ -18,12 +18,12 @@ pub enum Memory {
 #[derive(Serialize, Deserialize)]
 pub struct Config<T: Loader> {
     pub game_dir: PathBuf,
-    pub version: &'static str,
+    pub version: String,
     pub authentication: AuthMethod,
     pub memory: Option<Memory>,
-    pub version_name: Option<&'static str>,
+    pub version_name: Option<String>,
     pub loader: Option<T>,
-    pub java_version: Option<&'static str>,
+    pub java_version: Option<String>,
     pub runtime_dir: Option<PathBuf>,
     pub custom_java_args: Vec<String>,
     pub custom_args: Vec<String>,
@@ -32,11 +32,12 @@ pub struct Config<T: Loader> {
 #[derive(Serialize, Deserialize)]
 pub struct ConfigBuilder {
     game_dir: PathBuf,
-    version: &'static str,
+    version: String,
     authentication: AuthMethod,
     memory: Option<Memory>,
-    version_name: Option<&'static str>,
-    java_version: Option<&'static str>,
+    version_name: Option<String>,
+    java_version: Option<String>,
+    loader: Option<String>,
     runtime_dir: Option<PathBuf>,
     custom_java_args: Vec<String>,
     custom_args: Vec<String>,
@@ -45,7 +46,7 @@ pub struct ConfigBuilder {
 impl ConfigBuilder {
     pub fn new<T: AsRef<Path>>(
         game_dir: T,
-        version: &'static str,
+        version: String,
         authentication: AuthMethod,
     ) -> ConfigBuilder {
         ConfigBuilder {
@@ -55,6 +56,7 @@ impl ConfigBuilder {
             memory: None,
             version_name: None,
             java_version: None,
+            loader: None,
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
@@ -66,11 +68,11 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn version_name(mut self, version_name: &'static str) -> Self {
+    pub fn version_name(mut self, version_name: String) -> Self {
         self.version_name = Some(version_name);
         self
     }
-    pub fn java_version(mut self, java_version: &'static str) -> Self {
+    pub fn java_version(mut self, java_version: String) -> Self {
         self.java_version = Some(java_version);
         self
     }
@@ -93,7 +95,7 @@ impl ConfigBuilder {
     pub fn build<C: Loader>(self, loader: Option<C>) -> Config<C> {
         Config {
             game_dir: self.game_dir,
-            version: self.version,
+            version: self.version.to_string(),
             authentication: self.authentication,
             memory: self.memory,
             version_name: self.version_name,
@@ -107,7 +109,7 @@ impl ConfigBuilder {
 }
 
 impl<T: Loader> Config<T> {
-    pub fn new(game_dir: PathBuf, version: &'static str, authentication: AuthMethod) -> Self {
+    pub fn new(game_dir: PathBuf, version: String, authentication: AuthMethod) -> Self {
         Self {
             game_dir,
             version,
@@ -124,6 +126,7 @@ impl<T: Loader> Config<T> {
 
     pub fn get_version_name(&self) -> String {
         self.version_name
+            .as_ref()
             .map(|name| name.to_owned())
             .or_else(|| {
                 self.loader

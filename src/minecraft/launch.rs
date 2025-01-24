@@ -101,7 +101,7 @@ pub async fn launch<T: Loader>(
         "${natives_directory}",
         config
             .get_natives_path()
-            .join(config.version)
+            .join(&config.version)
             .to_string_lossy()
             .into_owned(),
     );
