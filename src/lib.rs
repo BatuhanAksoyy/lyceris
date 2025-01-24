@@ -17,7 +17,6 @@ mod tests {
         auth::AuthMethod,
         minecraft::{
             config::ConfigBuilder, emitter::Emitter, install::install, launch::launch,
-            loader::forge::Forge,
         },
     };
 
@@ -32,8 +31,7 @@ mod tests {
                 uuid: None,
             },
         )
-        .loader(Forge("36.2.42"))
-        .build();
+        .build(None::<()>);
 
         let emitter = Emitter::default();
 

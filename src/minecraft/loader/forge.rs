@@ -11,7 +11,7 @@ use crate::{
         custom::{CustomMeta, Library},
         vanilla::{self, VersionMeta},
     },
-    minecraft::{config::Config, emitter::Emitter, parse::parse_lib_path, TARGET_OS},
+    minecraft::{config::Config, emitter::Emitter, parse::parse_lib_path},
     util::{
         extract::{extract_specific_directory, extract_specific_file},
         json::read_json,

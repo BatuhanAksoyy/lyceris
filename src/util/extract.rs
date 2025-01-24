@@ -1,14 +1,10 @@
 use std::{
     fs::File,
-    io::{Read, Seek},
+    io::Read,
     path::Path,
 };
-use tokio::{fs::create_dir_all, io::AsyncWriteExt};
+use tokio::fs::create_dir_all;
 use zip::read::ZipArchive;
-
-pub trait ReadSeek: Read + Seek + Send + 'static {}
-
-impl<T: Read + Seek + Send + 'static> ReadSeek for T {}
 
 pub async fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate::Result<()> {
     let file = File::open(zip_path)?;
@@ -112,8 +108,7 @@ pub async fn read_file_from_jar<P: AsRef<Path>>(
     file_name: &str,
 ) -> crate::Result<String> {
     let file = File::open(zip_path)?;
-    let reader = Box::new(file) as Box<dyn ReadSeek>;
-    let mut archive = ZipArchive::new(reader)?;
+    let mut archive = ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
         let file = archive.by_index(i)?;

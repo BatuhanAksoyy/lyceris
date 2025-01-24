@@ -30,41 +30,37 @@ pub struct Config<T: Loader> {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ConfigBuilder<T: Loader = ()> {
+pub struct ConfigBuilder {
     game_dir: PathBuf,
     version: &'static str,
     authentication: AuthMethod,
     memory: Option<Memory>,
     version_name: Option<&'static str>,
-    loader: Option<T>,
     java_version: Option<&'static str>,
     runtime_dir: Option<PathBuf>,
     custom_java_args: Vec<String>,
     custom_args: Vec<String>,
 }
 
-impl ConfigBuilder<()> {
+impl ConfigBuilder {
     pub fn new<T: AsRef<Path>>(
         game_dir: T,
         version: &'static str,
         authentication: AuthMethod,
-    ) -> ConfigBuilder<()> {
+    ) -> ConfigBuilder {
         ConfigBuilder {
             game_dir: game_dir.as_ref().to_path_buf(),
             version,
             authentication,
             memory: None,
             version_name: None,
-            loader: None,
             java_version: None,
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
         }
     }
-}
 
-impl<T: Loader> ConfigBuilder<T> {
     pub fn memory(mut self, memory: Memory) -> Self {
         self.memory = Some(memory);
         self
@@ -74,22 +70,6 @@ impl<T: Loader> ConfigBuilder<T> {
         self.version_name = Some(version_name);
         self
     }
-
-    pub fn loader<C: Loader>(self, loader: C) -> ConfigBuilder<C> {
-        ConfigBuilder {
-            game_dir: self.game_dir,
-            version: self.version,
-            authentication: self.authentication,
-            memory: self.memory,
-            version_name: self.version_name,
-            loader: Some(loader),
-            java_version: self.java_version,
-            runtime_dir: self.runtime_dir,
-            custom_java_args: self.custom_java_args,
-            custom_args: self.custom_args,
-        }
-    }
-
     pub fn java_version(mut self, java_version: &'static str) -> Self {
         self.java_version = Some(java_version);
         self
@@ -110,14 +90,14 @@ impl<T: Loader> ConfigBuilder<T> {
         self
     }
 
-    pub fn build(self) -> Config<T> {
+    pub fn build<C: Loader>(self, loader: Option<C>) -> Config<C> {
         Config {
             game_dir: self.game_dir,
             version: self.version,
             authentication: self.authentication,
             memory: self.memory,
             version_name: self.version_name,
-            loader: self.loader,
+            loader,
             java_version: self.java_version,
             runtime_dir: self.runtime_dir,
             custom_java_args: self.custom_java_args,
