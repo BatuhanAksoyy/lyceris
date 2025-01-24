@@ -341,8 +341,7 @@ async fn execute_processors_if_exists(
                     .to_string_lossy()
                     .into_owned(),
                 "META-INF/MANIFEST.MF",
-            )
-            .await?
+            )?
             .lines()
             .find(|line| line.starts_with("Main-Class:"))
             .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string()))?

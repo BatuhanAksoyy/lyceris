@@ -88,8 +88,7 @@ impl Loader for Forge {
                 &installer_path,
                 "install_profile.json",
                 &installer_json_path,
-            )
-            .await?;
+            )?;
             read_json(&installer_json_path).await?
         };
 
@@ -97,12 +96,12 @@ impl Loader for Forge {
             read_json(&version_json_path).await?
         } else {
             download_installer(&installer_path, &version_name, emitter).await?;
-            extract_specific_file(&installer_path, "version.json", &version_json_path).await?;
+            extract_specific_file(&installer_path, "version.json", &version_json_path)?;
             read_json(&version_json_path).await?
         };
 
         process_data(config, &installer_path, &mut installer.data).await?;
-        
+
         meta.data = Some(merge_data(
             config,
             &meta,
@@ -116,7 +115,6 @@ impl Loader for Forge {
             "maven/",
             &config.game_dir.join("libraries"),
         )
-        .await
         .ok();
 
         meta.libraries.retain(|lib| {
@@ -249,8 +247,7 @@ async fn process_data(
                         .game_dir
                         .join("libraries")
                         .join(parse_lib_path(&path)?),
-                )
-                .await?;
+                )?;
 
                 value.client = format!("[{}]", path);
             }

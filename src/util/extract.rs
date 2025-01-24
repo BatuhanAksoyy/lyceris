@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::Read,
-    path::Path,
-};
+use std::{fs::File, io::Read, path::Path};
 use tokio::fs::create_dir_all;
 use zip::read::ZipArchive;
 
@@ -29,7 +25,7 @@ pub async fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate
     Ok(())
 }
 
-pub async fn extract_specific_file<P: AsRef<Path>>(
+pub fn extract_specific_file<P: AsRef<Path>>(
     zip_path: &P,
     file_name: &str,
     output_file: &P,
@@ -38,7 +34,7 @@ pub async fn extract_specific_file<P: AsRef<Path>>(
     let mut archive = ZipArchive::new(file)?;
 
     if let Some(parent) = &output_file.as_ref().parent() {
-        create_dir_all(parent).await?;
+        create_dir_all(parent);
     }
 
     let mut file_found = false;
@@ -62,7 +58,7 @@ pub async fn extract_specific_file<P: AsRef<Path>>(
 
     Ok(())
 }
-pub async fn extract_specific_directory<P: AsRef<Path>>(
+pub fn extract_specific_directory<P: AsRef<Path>>(
     zip_path: &P,
     dir_name: &str,
     output_dir: &P,
@@ -70,7 +66,7 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
     let file = File::open(zip_path)?;
     let mut archive = ZipArchive::new(file)?;
 
-    create_dir_all(&output_dir).await?;
+    create_dir_all(&output_dir);
 
     let mut dir_found = false;
     for i in 0..archive.len() {
@@ -82,10 +78,10 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
             let output_path = output_dir.as_ref().join(relative_path);
 
             if file.name().ends_with('/') {
-                tokio::fs::create_dir_all(&output_path).await?;
+                create_dir_all(&output_path);
             } else {
                 if let Some(parent) = output_path.parent() {
-                    tokio::fs::create_dir_all(parent).await?;
+                    create_dir_all(parent);
                 }
                 let mut file_buffer = File::create(output_dir.as_ref().join(file_path))?;
                 std::io::copy(&mut file, &mut file_buffer)?;
@@ -103,7 +99,7 @@ pub async fn extract_specific_directory<P: AsRef<Path>>(
     Ok(())
 }
 
-pub async fn read_file_from_jar<P: AsRef<Path>>(
+pub fn read_file_from_jar<P: AsRef<Path>>(
     zip_path: &P,
     file_name: &str,
 ) -> crate::Result<String> {
