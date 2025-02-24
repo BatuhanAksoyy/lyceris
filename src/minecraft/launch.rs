@@ -188,12 +188,19 @@ pub async fn launch<T: Loader>(
         .get_java_path(&meta.java_version.unwrap_or_default())
         .await?;
 
-    let mut child = Command::new(java_path)
-        .args(arguments)
-        .stdout(Stdio::piped())
-        .creation_flags(0x08000000)
-        .current_dir(&config.game_dir)
-        .spawn()?;
+    let mut child = {
+        let mut cmd = Command::new(java_path);
+        cmd.args(arguments)
+            .stdout(Stdio::piped())
+            .current_dir(&config.game_dir);
+
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+        
+        cmd.spawn()?
+    };
 
     let stdout = child
         .stdout
