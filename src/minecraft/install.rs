@@ -60,9 +60,9 @@ pub async fn install<T: Loader>(
     let manifest: VersionManifest = fetch(VERSION_MANIFEST_ENDPOINT).await?;
     let version_json_path = config.get_version_json_path();
     let mut meta: VersionMeta = if !version_json_path.exists() {
-        let mut meta = fetch_version_meta(&manifest, config.version).await?;
+        let mut meta = fetch_version_meta(&manifest, &config.version).await?;
         if let Some(loader) = &config.loader {
-            meta = loader.merge(config, meta, emitter).await?;
+            meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
         }
         write_json(version_json_path, &meta).await?;
         meta
@@ -85,10 +85,10 @@ pub async fn install<T: Loader>(
     if !version_jar_path.exists()
         || !calculate_sha1(&version_jar_path)?.eq(&meta.downloads.client.sha1)
     {
-        download(&meta.downloads.client.url, version_jar_path, emitter).await?;
+        download(&meta.downloads.client.url, version_jar_path, emitter, config.client.as_ref()).await?;
     }
 
-    let natives_path = config.get_natives_path().join(config.version);
+    let natives_path = config.get_natives_path().join(&config.version);
     if !natives_path.is_dir() {
         create_dir_all(&natives_path).await?;
     }
@@ -120,6 +120,7 @@ pub async fn install<T: Loader>(
         asset_index.map_to_resources.unwrap_or_default()
             || asset_index.r#virtual.unwrap_or_default(),
         emitter,
+        config.client.as_ref()
     )
     .await?;
 
@@ -127,8 +128,8 @@ pub async fn install<T: Loader>(
         create_dir_all(&natives_path).await?;
         for extract in to_be_extracted {
             let path = PathBuf::from(extract.path.unwrap());
-            download(&extract.url, &path, emitter).await?;
-            extract_file(&path, &natives_path).await?;
+            download(&extract.url, &path, emitter, config.client.as_ref()).await?;
+            extract_file(&path, &natives_path)?;
         }
     }
 
@@ -341,8 +342,7 @@ async fn execute_processors_if_exists(
                     .to_string_lossy()
                     .into_owned(),
                 "META-INF/MANIFEST.MF",
-            )
-            .await?
+            )?
             .lines()
             .find(|line| line.starts_with("Main-Class:"))
             .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string()))?
@@ -433,6 +433,7 @@ async fn download_necessary(
     game_dir: &Path,
     legacy: bool,
     emitter: Option<&Emitter>,
+    client: Option<&reqwest::Client>,
 ) -> crate::Result<()> {
     let broken_ones: Vec<(String, PathBuf)> = files
         .par_iter()
@@ -449,7 +450,7 @@ async fn download_necessary(
         })
         .collect();
 
-    download_multiple(broken_ones, emitter).await?;
+    download_multiple(broken_ones, emitter, client).await?;
 
     if legacy {
         files.par_iter().try_for_each(|file| {

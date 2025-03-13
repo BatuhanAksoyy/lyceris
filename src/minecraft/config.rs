@@ -3,50 +3,73 @@ use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::fs::PermissionsExt;
 
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::{auth::AuthMethod, json::version::meta::vanilla::JavaVersion};
 
 use super::loader::Loader;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Memory {
     Megabyte(u64),
     Gigabyte(u16),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Config<T: Loader> {
     pub game_dir: PathBuf,
-    pub version: &'static str,
+    pub version: String,
     pub authentication: AuthMethod,
     pub memory: Option<Memory>,
-    pub version_name: Option<&'static str>,
+    pub version_name: Option<String>,
     pub loader: Option<T>,
-    pub java_version: Option<&'static str>,
+    pub java_version: Option<String>,
     pub runtime_dir: Option<PathBuf>,
     pub custom_java_args: Vec<String>,
     pub custom_args: Vec<String>,
+    #[serde(skip)]
+    pub client: Option<Client>
+}
+
+impl<T: Loader> Config<T> {
+    pub fn into_vanilla(&self) -> Config<()> {
+        Config {
+            game_dir: self.game_dir.clone(),
+            version: self.version.clone(),
+            authentication: self.authentication.clone(),
+            memory: self.memory.clone(),
+            version_name: self.version_name.clone(),
+            loader: None,
+            java_version: self.java_version.clone(),
+            runtime_dir: self.runtime_dir.clone(),
+            custom_java_args: self.custom_java_args.clone(),
+            custom_args: self.custom_args.clone(),
+            client: self.client.clone()
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ConfigBuilder<T: Loader = ()> {
     game_dir: PathBuf,
-    version: &'static str,
+    version: String,
     authentication: AuthMethod,
     memory: Option<Memory>,
-    version_name: Option<&'static str>,
+    version_name: Option<String>,
     loader: Option<T>,
-    java_version: Option<&'static str>,
+    java_version: Option<String>,
     runtime_dir: Option<PathBuf>,
     custom_java_args: Vec<String>,
     custom_args: Vec<String>,
+    #[serde(skip)]
+    client: Option<Client>  
 }
 
 impl ConfigBuilder<()> {
     pub fn new<T: AsRef<Path>>(
         game_dir: T,
-        version: &'static str,
+        version: String,
         authentication: AuthMethod,
     ) -> ConfigBuilder<()> {
         ConfigBuilder {
@@ -60,6 +83,7 @@ impl ConfigBuilder<()> {
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
+            client: None
         }
     }
 }
@@ -70,12 +94,12 @@ impl<T: Loader> ConfigBuilder<T> {
         self
     }
 
-    pub fn version_name(mut self, version_name: &'static str) -> Self {
+    pub fn version_name(mut self, version_name: String) -> Self {
         self.version_name = Some(version_name);
         self
     }
 
-    pub fn loader<C: Loader>(self, loader: C) -> ConfigBuilder<C> {
+    pub fn loader(self, loader: Box<dyn Loader>) -> ConfigBuilder<Box<dyn Loader>> {
         ConfigBuilder {
             game_dir: self.game_dir,
             version: self.version,
@@ -87,10 +111,11 @@ impl<T: Loader> ConfigBuilder<T> {
             runtime_dir: self.runtime_dir,
             custom_java_args: self.custom_java_args,
             custom_args: self.custom_args,
+            client: self.client
         }
     }
 
-    pub fn java_version(mut self, java_version: &'static str) -> Self {
+    pub fn java_version(mut self, java_version: String) -> Self {
         self.java_version = Some(java_version);
         self
     }
@@ -110,6 +135,11 @@ impl<T: Loader> ConfigBuilder<T> {
         self
     }
 
+    pub fn client(mut self, client: Client) -> Self {
+        self.client = Some(client);
+        self
+    }
+
     pub fn build(self) -> Config<T> {
         Config {
             game_dir: self.game_dir,
@@ -122,12 +152,13 @@ impl<T: Loader> ConfigBuilder<T> {
             runtime_dir: self.runtime_dir,
             custom_java_args: self.custom_java_args,
             custom_args: self.custom_args,
+            client: self.client
         }
     }
 }
 
 impl<T: Loader> Config<T> {
-    pub fn new(game_dir: PathBuf, version: &'static str, authentication: AuthMethod) -> Self {
+    pub fn new(game_dir: PathBuf, version: String, authentication: AuthMethod) -> Self {
         Self {
             game_dir,
             version,
@@ -139,11 +170,13 @@ impl<T: Loader> Config<T> {
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
+            client: None
         }
     }
 
     pub fn get_version_name(&self) -> String {
         self.version_name
+            .as_ref()
             .map(|name| name.to_owned())
             .or_else(|| {
                 self.loader
@@ -163,7 +196,7 @@ impl<T: Loader> Config<T> {
             .get_runtime_path()
             .join(version.component.clone())
             .join("bin")
-            .join("java");
+            .join("javaw");
 
         #[cfg(target_os = "macos")]
         let java_path = self
@@ -173,7 +206,7 @@ impl<T: Loader> Config<T> {
             .join("Contents")
             .join("Home")
             .join("bin")
-            .join("java");
+            .join("javaw");
 
         #[cfg(not(target_os = "windows"))]
         {

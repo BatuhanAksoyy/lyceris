@@ -14,7 +14,7 @@ use tokio::{
 
 use crate::{
     error::Error,
-    minecraft::emitter::{Emit, Emitter},
+    minecraft::emitter::{Emit, Emitter, Event},
     util::retry::retry,
 };
 
@@ -51,9 +51,12 @@ pub async fn download<P: AsRef<Path>>(
     url: impl IntoUrl,
     destination: P,
     emitter: Option<&Emitter>,
+    client: Option<&Client>,
 ) -> crate::Result<u64> {
     // Send a get request to the given url.
-    let response = Client::builder().build()?.get(url).send().await?;
+    let default_client = Client::default();
+    let client = client.unwrap_or(&default_client);
+    let response = client.get(url).send().await?;
 
     if !response.status().is_success() {
         return Err(Error::Download(response.status().to_string()));
@@ -90,7 +93,7 @@ pub async fn download<P: AsRef<Path>>(
                 // Emit progress event
                 emitter
                     .emit(
-                        "single_download_progress",
+                        Event::SingleDownloadProgress,
                         (
                             destination.as_ref().to_string_lossy().into_owned(),
                             downloaded,
@@ -138,6 +141,7 @@ pub async fn download<P: AsRef<Path>>(
 pub async fn download_multiple<U, P>(
     downloads: Vec<(U, P)>,
     emitter: Option<&Emitter>,
+    client: Option<&Client>,
 ) -> crate::Result<()>
 where
     U: IntoUrl + Send,               // URL type that implements IntoUrl
@@ -145,14 +149,12 @@ where
 {
     let total_files = downloads.len();
     let total_downloaded = Arc::new(Mutex::new(0));
-
     let tasks = downloads.into_iter().map(|(url, destination)| {
         let total_downloaded = Arc::clone(&total_downloaded);
-
         async move {
             // Retry download logic
             let result = retry(
-                || async { download(url.as_str(), destination.as_ref(), emitter).await },
+                || async { download(url.as_str(), destination.as_ref(), emitter, client).await },
                 Result::is_ok,
                 3,
                 Duration::from_secs(5),
@@ -168,7 +170,7 @@ where
 
                     emitter
                         .emit(
-                            "multiple_download_progress",
+                            Event::MultipleDownloadProgress,
                             (
                                 destination.as_ref().to_string_lossy().into_owned(),
                                 *downloaded as u64,

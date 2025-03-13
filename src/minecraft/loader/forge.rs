@@ -1,6 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
     env::temp_dir,
+    future::Future,
+    pin::Pin,
 };
 
 use serde::{Deserialize, Serialize};
@@ -11,7 +13,7 @@ use crate::{
         custom::{CustomMeta, Library},
         vanilla::{self, VersionMeta},
     },
-    minecraft::{config::Config, emitter::Emitter, parse::parse_lib_path, TARGET_OS},
+    minecraft::{config::Config, emitter::Emitter, parse::parse_lib_path},
     util::{
         extract::{extract_specific_directory, extract_specific_file},
         json::read_json,
@@ -59,95 +61,114 @@ pub struct Data {
     pub server: String,
 }
 
-pub struct Forge(pub &'static str);
+pub struct Forge(pub String);
+
+impl From<Forge> for Box<dyn Loader> {
+    fn from(value: Forge) -> Self {
+        Box::new(value)
+    }
+}
 
 impl Loader for Forge {
-    async fn merge<T: Loader>(
-        &self,
-        config: &Config<T>,
+    fn merge<'a>(
+        &'a self,
+        config: &'a Config<()>,
         mut meta: VersionMeta,
-        emitter: Option<&Emitter>,
-    ) -> crate::Result<VersionMeta> {
-        let version_name = config.get_version_name();
-        let profiles_path = config
-            .game_dir
-            .join(".forge")
-            .join("profiles")
-            .join(&version_name);
+        emitter: Option<&'a Emitter>,
+    ) -> Pin<Box<dyn Future<Output = crate::Result<VersionMeta>> + Send + 'a>> {
+        Box::pin(async move {
+            let version_name = config.get_version_name();
+            let profiles_path = config
+                .game_dir
+                .join(".forge")
+                .join("profiles")
+                .join(&version_name);
 
-        let installer_json_path = profiles_path.join(format!("installer-{}.json", &version_name));
-        let version_json_path = profiles_path.join(format!("version-{}.json", &version_name));
-        let installer_path = temp_dir().join(format!("forge-{}.jar", version_name));
+            let installer_json_path =
+                profiles_path.join(format!("installer-{}.json", &version_name));
+            let version_json_path = profiles_path.join(format!("version-{}.json", &version_name));
+            let installer_path = temp_dir().join(format!("forge-{}.jar", version_name));
 
-        let mut installer: Installer = if installer_json_path.is_file() {
-            read_json(&installer_json_path).await?
-        } else {
-            download_installer(&installer_path, &version_name, emitter).await?;
-            extract_specific_file(
+            let mut installer: Installer = if installer_json_path.is_file() {
+                read_json(&installer_json_path).await?
+            } else {
+                download_installer(
+                    &installer_path,
+                    &version_name,
+                    emitter,
+                    config.client.as_ref(),
+                )
+                .await?;
+                extract_specific_file(
+                    &installer_path,
+                    "install_profile.json",
+                    &installer_json_path,
+                )?;
+                read_json(&installer_json_path).await?
+            };
+
+            let version: CustomMeta = if version_json_path.is_file() {
+                read_json(&version_json_path).await?
+            } else {
+                download_installer(
+                    &installer_path,
+                    &version_name,
+                    emitter,
+                    config.client.as_ref(),
+                )
+                .await?;
+                extract_specific_file(&installer_path, "version.json", &version_json_path)?;
+                read_json(&version_json_path).await?
+            };
+
+            process_data(config, &installer_path, &mut installer.data).await?;
+
+            meta.data = Some(merge_data(
+                config,
+                &meta,
+                installer.data.unwrap_or_default(),
+            ));
+
+            meta.processors = installer.processors;
+
+            extract_specific_directory(
                 &installer_path,
-                "install_profile.json",
-                &installer_json_path,
+                "maven/",
+                &config.game_dir.join("libraries"),
             )
-            .await?;
-            read_json(&installer_json_path).await?
-        };
+            .ok();
 
-        let version: CustomMeta = if version_json_path.is_file() {
-            read_json(&version_json_path).await?
-        } else {
-            download_installer(&installer_path, &version_name, emitter).await?;
-            extract_specific_file(&installer_path, "version.json", &version_json_path).await?;
-            read_json(&version_json_path).await?
-        };
+            meta.libraries.retain(|lib| {
+                version
+                    .libraries
+                    .iter()
+                    .all(|v_lib| v_lib.name.split(':').nth(1) != lib.name.split(':').nth(1))
+            });
 
-        process_data(config, &installer_path, &mut installer.data).await?;
-        
-        meta.data = Some(merge_data(
-            config,
-            &meta,
-            installer.data.unwrap_or_default(),
-        ));
+            let mut seen = HashSet::new();
 
-        meta.processors = installer.processors;
+            meta.libraries
+                .extend(merge_libraries(config, version.libraries, &mut seen, false));
+            meta.libraries.extend(merge_libraries(
+                config,
+                installer.libraries,
+                &mut seen,
+                true,
+            ));
 
-        extract_specific_directory(
-            &installer_path,
-            "maven/",
-            &config.game_dir.join("libraries"),
-        )
-        .await
-        .ok();
-
-        meta.libraries.retain(|lib| {
-            version
-                .libraries
-                .iter()
-                .all(|v_lib| v_lib.name.split(':').nth(1) != lib.name.split(':').nth(1))
-        });
-
-        let mut seen = HashSet::new();
-
-        meta.libraries
-            .extend(merge_libraries(config, version.libraries, &mut seen, false));
-        meta.libraries.extend(merge_libraries(
-            config,
-            installer.libraries,
-            &mut seen,
-            true,
-        ));
-
-        if let Some(ref mut arguments) = meta.arguments {
-            if let Some(jvm) = version.arguments.jvm {
-                arguments.jvm.extend(jvm);
+            if let Some(ref mut arguments) = meta.arguments {
+                if let Some(jvm) = version.arguments.jvm {
+                    arguments.jvm.extend(jvm);
+                }
+                if let Some(game) = version.arguments.game {
+                    arguments.game.extend(game);
+                }
             }
-            if let Some(game) = version.arguments.game {
-                arguments.game.extend(game);
-            }
-        }
 
-        meta.main_class = version.main_class;
+            meta.main_class = version.main_class;
 
-        Ok(meta)
+            Ok(meta)
+        })
     }
 
     fn get_version(&self) -> String {
@@ -159,10 +180,11 @@ async fn download_installer(
     installer_path: &std::path::Path,
     version_name: &str,
     emitter: Option<&Emitter>,
+    client: Option<&reqwest::Client>,
 ) -> crate::Result<()> {
     if !installer_path.is_file() {
         let installer_url = INSTALLER_JAR_ENDPOINT.replace("{loader_version}", version_name);
-        download(installer_url, installer_path, emitter).await?;
+        download(installer_url, installer_path, emitter, client).await?;
     }
     Ok(())
 }
@@ -248,8 +270,7 @@ async fn process_data(
                         .game_dir
                         .join("libraries")
                         .join(parse_lib_path(&path)?),
-                )
-                .await?;
+                )?;
 
                 value.client = format!("[{}]", path);
             }

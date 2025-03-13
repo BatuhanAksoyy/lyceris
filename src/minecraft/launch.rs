@@ -10,7 +10,7 @@ use crate::{
     auth::AuthMethod,
     error::Error,
     json::version::meta::vanilla::{Arguments, Element, Value, VersionMeta},
-    minecraft::{config::Memory, parse::ParseRule},
+    minecraft::{config::Memory, emitter::Event, parse::ParseRule},
     util::json::read_json,
 };
 
@@ -101,7 +101,7 @@ pub async fn launch<T: Loader>(
         "${natives_directory}",
         config
             .get_natives_path()
-            .join(config.version)
+            .join(&config.version)
             .to_string_lossy()
             .into_owned(),
     );
@@ -196,7 +196,7 @@ pub async fn launch<T: Loader>(
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             while let Some(line) = reader.next_line().await.unwrap() {
-                emitter.emit("console", line).await;
+                emitter.emit(Event::Console, line).await;
             }
         });
     }
