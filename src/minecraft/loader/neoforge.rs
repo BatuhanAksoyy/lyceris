@@ -1,9 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    env::temp_dir,
-    future::Future,
-    path::PathBuf,
-    pin::Pin,
+    collections::{HashMap, HashSet}, env::temp_dir, future::Future, path::PathBuf, pin::Pin
 };
 
 use crate::{
@@ -21,17 +17,17 @@ use crate::{
 
 use super::Loader;
 
-const INSTALLER_JAR_ENDPOINT: &str = "https://maven.minecraftforge.net/net/minecraftforge/forge/{loader_version}/forge-{loader_version}-installer.jar";
+const INSTALLER_JAR_ENDPOINT: &str = "https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader_version}/neoforge-{loader_version}-installer.jar";
 
-pub struct Forge(pub String);
+pub struct NeoForge(pub String);
 
-impl From<Forge> for Box<dyn Loader> {
-    fn from(value: Forge) -> Self {
+impl From<NeoForge> for Box<dyn Loader> {
+    fn from(value: NeoForge) -> Self {
         Box::new(value)
     }
 }
 
-impl Loader for Forge {
+impl Loader for NeoForge {
     fn merge<'a>(
         &'a self,
         config: &'a Config<()>,
@@ -48,21 +44,21 @@ impl Loader for Forge {
 
             let profiles_path = config
                 .game_dir
-                .join(".forge")
+                .join(".NeoForge")
                 .join("profiles")
                 .join(&version_name);
 
             let installer_json_path =
                 profiles_path.join(format!("installer-{}.json", &version_name));
             let version_json_path = profiles_path.join(format!("version-{}.json", &version_name));
-            let installer_path = temp_dir().join(format!("forge-{}.jar", version_name));
+            let installer_path = temp_dir().join(format!("NeoForge-{}.jar", version_name));
 
             let mut installer: Installer = if installer_json_path.is_file() {
                 read_json(&installer_json_path).await?
             } else {
                 download_installer(
                     &installer_path,
-                    &version_name,
+                    &self.0,
                     emitter,
                     config.client.as_ref(),
                 )
@@ -80,7 +76,7 @@ impl Loader for Forge {
             } else {
                 download_installer(
                     &installer_path,
-                    &version_name,
+                    &self.0,
                     emitter,
                     config.client.as_ref(),
                 )
@@ -99,7 +95,7 @@ impl Loader for Forge {
                     .game_dir
                     .join("versions")
                     .join(&version_name)
-                    .join(format!("{}.jar", version_name)),
+                    .join(format!("{}.jar", version_name))
             ));
 
             meta.processors = installer.processors;
@@ -233,7 +229,7 @@ async fn process_data(
                     "File extension not found for the processor".to_string(),
                 ))?;
                 let path = format!(
-                    "com.cubidron.lyceris:forge-installer-extracts:{}:{}@{}",
+                    "com.cubidron.lyceris:NeoForge-installer-extracts:{}:{}@{}",
                     config.version, file_name, ext
                 );
 

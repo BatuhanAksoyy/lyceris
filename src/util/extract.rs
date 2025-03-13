@@ -106,11 +106,9 @@ pub fn read_file_from_jar<P: AsRef<Path>>(
     let mut archive = ZipArchive::new(file)?;
 
     for i in 0..archive.len() {
-        let file = archive.by_index(i)?;
-        let file_path = file.mangled_name();
+        let mut file = archive.by_index(i)?;
         if file.name() == file_name {
             let mut buffer = String::new();
-            let mut file = File::create(file_path)?;
             file.read_to_string(&mut buffer)?;
             return Ok(buffer);
         }

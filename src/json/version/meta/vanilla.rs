@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::minecraft::loader::forge::{Data, Processor};
+use super::custom::{Data, Processor};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

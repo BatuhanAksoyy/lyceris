@@ -112,6 +112,10 @@ pub async fn launch<T: Loader>(
             .libraries
             .iter()
             .filter_map(|lib| {
+                if lib.skip_args {
+                    return None
+                }
+
                 lib.downloads.as_ref().and_then(|downloads| {
                     downloads.artifact.as_ref().and_then(|artifact| {
                         artifact.path.as_ref().and_then(|path| {

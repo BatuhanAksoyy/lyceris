@@ -5,6 +5,7 @@ use super::{config::Config, emitter::Emitter};
 pub mod fabric;
 pub mod forge;
 pub mod quilt;
+pub mod neoforge;
 
 use std::future::Future;
 use std::pin::Pin;

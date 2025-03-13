@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use super::vanilla::{Element, LibraryDownloads};
@@ -47,4 +49,41 @@ pub struct Library {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub downloads: Option<LibraryDownloads>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Mirror {
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    image: Option<String>,
+    homepage: String,
+    url: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Installer {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<HashMap<String, Data>>,
+    pub processors: Option<Vec<Processor>>,
+    pub libraries: Vec<Library>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mirror_list: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Processor {
+    pub classpath: Vec<String>,
+    pub args: Vec<String>,
+    pub sides: Option<Vec<String>>,
+    pub outputs: Option<HashMap<String, String>>,
+    pub jar: String,
+    #[serde(default)]
+    pub success: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Data {
+    pub client: String,
+    pub server: String,
 }
