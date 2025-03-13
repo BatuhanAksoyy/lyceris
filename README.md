@@ -32,7 +32,6 @@ cargo add lyceris
 
 ## Usage
 
-This is the example implementation with using Quilt mod loader in version 1.20.
 Don't forget to change the game directory path!
 ```rust
 use std::env;
