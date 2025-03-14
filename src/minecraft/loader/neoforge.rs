@@ -44,14 +44,14 @@ impl Loader for NeoForge {
 
             let profiles_path = config
                 .game_dir
-                .join(".NeoForge")
+                .join(".neoforge")
                 .join("profiles")
                 .join(&version_name);
 
             let installer_json_path =
                 profiles_path.join(format!("installer-{}.json", &version_name));
             let version_json_path = profiles_path.join(format!("version-{}.json", &version_name));
-            let installer_path = temp_dir().join(format!("NeoForge-{}.jar", version_name));
+            let installer_path = temp_dir().join(format!("neoforge-{}.jar", version_name));
 
             let mut installer: Installer = if installer_json_path.is_file() {
                 read_json(&installer_json_path).await?
@@ -229,7 +229,7 @@ async fn process_data(
                     "File extension not found for the processor".to_string(),
                 ))?;
                 let path = format!(
-                    "com.cubidron.lyceris:NeoForge-installer-extracts:{}:{}@{}",
+                    "com.cubidron.lyceris:neoforge-installer-extracts:{}:{}@{}",
                     config.version, file_name, ext
                 );
 

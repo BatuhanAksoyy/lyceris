@@ -1,4 +1,4 @@
-use std::{collections::HashMap, process::Stdio};
+use std::{collections::HashMap, fs::create_dir_all, process::Stdio};
 
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -24,6 +24,8 @@ pub async fn launch<T: Loader>(
     let version_name = config.get_version_name();
     let mut arguments = Vec::<String>::with_capacity(100);
     let meta: VersionMeta = read_json(&config.get_version_json_path()).await?;
+    let profile_dir = config.profile.clone().map(|p| p.root.join(p.name));
+    let current_dir = profile_dir.as_ref().unwrap_or(&config.game_dir);
 
     let meta_arguments = meta.arguments.unwrap_or_else(|| Arguments {
         game: meta
@@ -81,7 +83,7 @@ pub async fn launch<T: Loader>(
     insert_var("${version_name}", version_name.clone());
     insert_var(
         "${game_directory}",
-        config.game_dir.to_string_lossy().into_owned(),
+        current_dir.to_string_lossy().into_owned(),
     );
 
     let assets_dir = config.get_assets_path();
@@ -113,7 +115,7 @@ pub async fn launch<T: Loader>(
             .iter()
             .filter_map(|lib| {
                 if lib.skip_args {
-                    return None
+                    return None;
                 }
 
                 lib.downloads.as_ref().and_then(|downloads| {
@@ -184,10 +186,12 @@ pub async fn launch<T: Loader>(
         .get_java_path(&meta.java_version.unwrap_or_default())
         .await?;
 
+    create_dir_all(current_dir)?;
+
     let mut child = Command::new(java_path)
         .args(arguments)
         .stdout(Stdio::piped())
-        .current_dir(&config.game_dir)
+        .current_dir(current_dir)
         .spawn()?;
 
     let stdout = child

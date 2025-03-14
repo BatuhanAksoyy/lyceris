@@ -16,6 +16,26 @@ pub enum Memory {
     Gigabyte(u16),
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Profile {
+    pub name: String,
+    pub root: PathBuf,
+}
+
+impl Profile {
+    pub fn new(name: String, root: PathBuf) -> Self {
+        Self { name, root }
+    }
+
+    pub fn change_name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    pub fn change_root(&mut self, root: PathBuf) {
+        self.root = root;
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config<T: Loader> {
     pub game_dir: PathBuf,
@@ -23,6 +43,7 @@ pub struct Config<T: Loader> {
     pub authentication: AuthMethod,
     pub memory: Option<Memory>,
     pub version_name: Option<String>,
+    pub profile: Option<Profile>,
     pub loader: Option<T>,
     pub java_version: Option<String>,
     pub runtime_dir: Option<PathBuf>,
@@ -41,6 +62,7 @@ impl<T: Loader> Config<T> {
             memory: self.memory.clone(),
             version_name: self.version_name.clone(),
             loader: None,
+            profile: self.profile.clone(),
             java_version: self.java_version.clone(),
             runtime_dir: self.runtime_dir.clone(),
             custom_java_args: self.custom_java_args.clone(),
@@ -57,6 +79,7 @@ pub struct ConfigBuilder<T: Loader = ()> {
     authentication: AuthMethod,
     memory: Option<Memory>,
     version_name: Option<String>,
+    pub profile: Option<Profile>,
     loader: Option<T>,
     java_version: Option<String>,
     runtime_dir: Option<PathBuf>,
@@ -80,6 +103,7 @@ impl ConfigBuilder<()> {
             version_name: None,
             loader: None,
             java_version: None,
+            profile: None,
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
@@ -106,6 +130,7 @@ impl<T: Loader> ConfigBuilder<T> {
             authentication: self.authentication,
             memory: self.memory,
             version_name: self.version_name,
+            profile: self.profile,
             loader: Some(loader),
             java_version: self.java_version,
             runtime_dir: self.runtime_dir,
@@ -140,6 +165,11 @@ impl<T: Loader> ConfigBuilder<T> {
         self
     }
 
+    pub fn profile(mut self, profile: Profile) -> Self {
+        self.profile = Some(profile);
+        self
+    }
+
     pub fn build(self) -> Config<T> {
         Config {
             game_dir: self.game_dir,
@@ -150,6 +180,7 @@ impl<T: Loader> ConfigBuilder<T> {
             loader: self.loader,
             java_version: self.java_version,
             runtime_dir: self.runtime_dir,
+            profile: self.profile,
             custom_java_args: self.custom_java_args,
             custom_args: self.custom_args,
             client: self.client
@@ -165,6 +196,7 @@ impl<T: Loader> Config<T> {
             authentication,
             memory: None,
             version_name: None,
+            profile: None,
             loader: None,
             java_version: None,
             runtime_dir: None,
