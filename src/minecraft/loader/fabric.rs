@@ -48,15 +48,21 @@ impl From<Fabric> for Box<dyn Loader> {
 impl Loader for Fabric {
     fn merge<'a>(
         &'a self,
-        _config: &'a Config<()>,
+        config: &'a Config<()>,
         mut meta: VersionMeta,
         _emitter: Option<&'a Emitter>,
     ) -> Pin<Box<dyn Future<Output = crate::Result<VersionMeta>> + Send + 'a>> {
         Box::pin(async move {
-            let loaders: Vec<FabricLoader> =
-                fetch(format!("{}versions/loader", VERSION_META_ENDPOINT)).await?;
-            let versions: Vec<Version> =
-                fetch(format!("{}versions/game", VERSION_META_ENDPOINT)).await?;
+            let loaders: Vec<FabricLoader> = fetch(
+                format!("{}versions/loader", VERSION_META_ENDPOINT),
+                config.client.as_ref(),
+            )
+            .await?;
+            let versions: Vec<Version> = fetch(
+                format!("{}versions/game", VERSION_META_ENDPOINT),
+                config.client.as_ref(),
+            )
+            .await?;
 
             let loader = loaders
                 .into_iter()
@@ -67,10 +73,13 @@ impl Loader for Fabric {
                 .find(|v| v.version == meta.id)
                 .ok_or_else(|| Error::UnknownVersion("Fabric".into()))?;
 
-            let version: CustomMeta = fetch(format!(
-                "{}versions/loader/{}/{}/profile/json",
-                VERSION_META_ENDPOINT, fabric.version, loader.version
-            ))
+            let version: CustomMeta = fetch(
+                format!(
+                    "{}versions/loader/{}/{}/profile/json",
+                    VERSION_META_ENDPOINT, fabric.version, loader.version
+                ),
+                config.client.as_ref(),
+            )
             .await?;
 
             meta.libraries.retain(|lib| {

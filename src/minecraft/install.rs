@@ -57,10 +57,12 @@ pub async fn install<T: Loader>(
     config: &Config<T>,
     emitter: Option<&Emitter>,
 ) -> crate::Result<()> {
-    let manifest: VersionManifest = fetch(VERSION_MANIFEST_ENDPOINT).await?;
+    let manifest: VersionManifest =
+        fetch(VERSION_MANIFEST_ENDPOINT, config.client.as_ref()).await?;
     let version_json_path = config.get_version_json_path();
     let mut meta: VersionMeta = if !version_json_path.exists() {
-        let mut meta = fetch_version_meta(&manifest, &config.version).await?;
+        let mut meta =
+            fetch_version_meta(&manifest, &config.version, config.client.as_ref()).await?;
         if let Some(loader) = &config.loader {
             meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
         }
@@ -74,7 +76,7 @@ pub async fn install<T: Loader>(
         .get_indexes_path()
         .join(format!("{}.json", &meta.asset_index.id));
     let asset_index: AssetIndex = if !asset_index_path.exists() {
-        let asset_index = fetch(&meta.asset_index.url).await?;
+        let asset_index = fetch(&meta.asset_index.url, config.client.as_ref()).await?;
         write_json(asset_index_path, &asset_index).await?;
         asset_index
     } else {
@@ -85,7 +87,13 @@ pub async fn install<T: Loader>(
     if !version_jar_path.exists()
         || !calculate_sha1(&version_jar_path)?.eq(&meta.downloads.client.sha1)
     {
-        download(&meta.downloads.client.url, version_jar_path, emitter, config.client.as_ref()).await?;
+        download(
+            &meta.downloads.client.url,
+            version_jar_path,
+            emitter,
+            config.client.as_ref(),
+        )
+        .await?;
     }
 
     let natives_path = config.get_natives_path().join(&config.version);
@@ -100,9 +108,9 @@ pub async fn install<T: Loader>(
     let java_version = meta.java_version.as_ref().unwrap_or(&default_java_version);
     let runtime_path = config.get_runtime_path().join(&java_version.component);
 
-    let java_manifest: JavaManifest = fetch(JAVA_MANIFEST_ENDPOINT).await?;
+    let java_manifest: JavaManifest = fetch(JAVA_MANIFEST_ENDPOINT, config.client.as_ref()).await?;
     let java_url = get_java_url(&java_manifest, java_version)?;
-    let java_files: JavaFileManifest = fetch(java_url).await?;
+    let java_files: JavaFileManifest = fetch(java_url, config.client.as_ref()).await?;
 
     let file_map = build_file_map(
         &asset_index,
@@ -120,7 +128,7 @@ pub async fn install<T: Loader>(
         asset_index.map_to_resources.unwrap_or_default()
             || asset_index.r#virtual.unwrap_or_default(),
         emitter,
-        config.client.as_ref()
+        config.client.as_ref(),
     )
     .await?;
 
@@ -141,6 +149,7 @@ pub async fn install<T: Loader>(
 async fn fetch_version_meta(
     manifest: &VersionManifest,
     version: &str,
+    client: Option<&reqwest::Client>,
 ) -> crate::Result<VersionMeta> {
     let version_url = manifest
         .versions
@@ -149,7 +158,7 @@ async fn fetch_version_meta(
         .ok_or_else(|| Error::UnknownVersion("Vanilla".to_string()))?
         .url
         .clone();
-    fetch(&version_url).await
+    fetch(&version_url, client).await
 }
 
 fn get_java_url(java_manifest: &JavaManifest, java_version: &JavaVersion) -> crate::Result<String> {

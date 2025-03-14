@@ -1,10 +1,6 @@
-use once_cell::sync::Lazy;
-use reqwest::{IntoUrl, Response};
+use reqwest::{Client, IntoUrl, Response};
 use serde::{de::DeserializeOwned, Serialize};
 use std::collections::HashMap;
-
-/// A global instance of the reqwest Client.
-static CLIENT: Lazy<reqwest::Client> = Lazy::new(reqwest::Client::new);
 
 /// A struct to hold optional fetch request parameters.
 #[derive(Default)]
@@ -15,9 +11,13 @@ pub struct FetchOptions<B: Serialize> {
     pub body: Option<B>,
 }
 
-pub async fn fetch<T: DeserializeOwned>(url: impl IntoUrl) -> crate::Result<T> {
+pub async fn fetch<T: DeserializeOwned>(
+    url: impl IntoUrl,
+    client: Option<&Client>,
+) -> crate::Result<T> {
     // Call the fetch function with default options
-    fetch_with_options::<T, ()>(url, None).await
+    let default_client = Client::default();
+    fetch_with_options::<T, ()>(url, None, client.unwrap_or(&default_client)).await
 }
 
 /// Performs a customizable fetch request.
@@ -54,10 +54,11 @@ pub async fn fetch<T: DeserializeOwned>(url: impl IntoUrl) -> crate::Result<T> {
 pub async fn fetch_with_options<T: DeserializeOwned, B: Serialize + Default>(
     url: impl IntoUrl,
     options: Option<FetchOptions<B>>,
+    client: &Client,
 ) -> crate::Result<T> {
     let options = options.unwrap_or_default(); // Use default options if none provided
 
-    let mut request_builder = CLIENT.request(options.method.clone(), url);
+    let mut request_builder = client.request(options.method.clone(), url);
 
     // Add headers if provided
     for (key, value) in options.headers {

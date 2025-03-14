@@ -121,10 +121,13 @@ pub fn create_link() -> crate::Result<String> {
     Ok(authorize_url.to_string())
 }
 
-pub async fn authenticate(code: String) -> crate::Result<MinecraftAccount> {
-    let ms_token = get_ms_token(&code).await?;
-    let xbox_token = get_xbox_token(&ms_token.access_token).await?;
-    let xsts_token = get_xsts_token(&xbox_token.token).await?;
+pub async fn authenticate(
+    code: String,
+    client: &Client,
+) -> crate::Result<MinecraftAccount> {
+    let ms_token = get_ms_token(&code, client).await?;
+    let xbox_token = get_xbox_token(&ms_token.access_token, client).await?;
+    let xsts_token = get_xsts_token(&xbox_token.token, client).await?;
     let userhash = xsts_token
         .display_claims
         .xui
@@ -133,11 +136,14 @@ pub async fn authenticate(code: String) -> crate::Result<MinecraftAccount> {
         .uhs
         .clone();
 
-    obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token).await
+    obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token, client).await
 }
 
-pub async fn refresh(refresh_token: String) -> crate::Result<MinecraftAccount> {
-    let token_response = Client::new()
+pub async fn refresh(
+    refresh_token: String,
+    client: &Client,
+) -> crate::Result<MinecraftAccount> {
+    let token_response = client
         .post(TOKEN_URL)
         .form(&[
             ("client_id", CLIENT_ID),
@@ -150,8 +156,8 @@ pub async fn refresh(refresh_token: String) -> crate::Result<MinecraftAccount> {
         .await?;
 
     let ms_token: MSToken = token_response.json().await?;
-    let xbox_token = get_xbox_token(&ms_token.access_token).await?;
-    let xsts_token = get_xsts_token(&xbox_token.token).await?;
+    let xbox_token = get_xbox_token(&ms_token.access_token, client).await?;
+    let xsts_token = get_xsts_token(&xbox_token.token, client).await?;
     let userhash = xsts_token
         .display_claims
         .xui
@@ -160,31 +166,32 @@ pub async fn refresh(refresh_token: String) -> crate::Result<MinecraftAccount> {
         .uhs
         .clone();
 
-    obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token).await
+    obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token, client).await
 }
 
 async fn obtain_minecraft_account(
     xsts_token: &str,
     userhash: &str,
     refresh_token: String,
+    client: &Client,
 ) -> crate::Result<MinecraftAccount> {
-    let token = get_minecraft_token(xsts_token, userhash).await?;
+    let token = get_minecraft_token(xsts_token, userhash, client).await?;
     let profile = get_profile(token.access_token.clone()).await?;
     let jwt = parse_login_token(&token.access_token)?;
 
     Ok(MinecraftAccount {
         xuid: jwt.xuid,
         exp: jwt.exp,
-        uuid: profile.id.unwrap_or_else(|| "".to_string()),
-        username: profile.name.unwrap_or_else(|| "".to_string()),
+        uuid: profile.id.unwrap_or_default(),
+        username: profile.name.unwrap_or_default(),
         access_token: token.access_token,
         refresh_token,
         client_id: CLIENT_ID.to_string(),
     })
 }
 
-async fn get_ms_token(code: &str) -> crate::Result<MSToken> {
-    let token_response = Client::new()
+async fn get_ms_token(code: &str, client: &Client) -> crate::Result<MSToken> {
+    let token_response = client
         .post(TOKEN_URL)
         .form(&[
             ("client_id", CLIENT_ID),
@@ -200,7 +207,7 @@ async fn get_ms_token(code: &str) -> crate::Result<MSToken> {
     Ok(ms_token)
 }
 
-async fn get_xbox_token(ms_token: &str) -> crate::Result<XboxToken> {
+async fn get_xbox_token(ms_token: &str, client: &Client) -> crate::Result<XboxToken> {
     let body = serde_json::json!({
         "Properties": {
             "AuthMethod": "RPS",
@@ -211,10 +218,15 @@ async fn get_xbox_token(ms_token: &str) -> crate::Result<XboxToken> {
         "TokenType": "JWT"
     });
 
-    fetch_token("https://user.auth.xboxlive.com/user/authenticate", body).await
+    fetch_token(
+        "https://user.auth.xboxlive.com/user/authenticate",
+        body,
+        client,
+    )
+    .await
 }
 
-async fn get_xsts_token(xbox_token: &str) -> crate::Result<XstsToken> {
+async fn get_xsts_token(xbox_token: &str, client: &Client) -> crate::Result<XstsToken> {
     let body = serde_json::json!({
         "Properties": {
             "SandboxId": "RETAIL",
@@ -224,12 +236,18 @@ async fn get_xsts_token(xbox_token: &str) -> crate::Result<XstsToken> {
         "TokenType": "JWT"
     });
 
-    fetch_token("https://xsts.auth.xboxlive.com/xsts/authorize", body).await
+    fetch_token(
+        "https://xsts.auth.xboxlive.com/xsts/authorize",
+        body,
+        client,
+    )
+    .await
 }
 
 async fn fetch_token<T: for<'de> Deserialize<'de>>(
     url: &str,
     body: serde_json::Value,
+    client: &Client,
 ) -> crate::Result<T> {
     let token_response: T = fetch_with_options(
         url,
@@ -239,13 +257,18 @@ async fn fetch_token<T: for<'de> Deserialize<'de>>(
             query_params: HashMap::default(),
             body: Some(body),
         }),
+        client,
     )
     .await?;
 
     Ok(token_response)
 }
 
-async fn get_minecraft_token(xsts_token: &str, userhash: &str) -> crate::Result<MinecraftResponse> {
+async fn get_minecraft_token(
+    xsts_token: &str,
+    userhash: &str,
+    client: &Client,
+) -> crate::Result<MinecraftResponse> {
     let body = serde_json::json!({
         "identityToken": format!("XBL3.0 x={};{}", userhash, xsts_token)
     });
@@ -258,6 +281,7 @@ async fn get_minecraft_token(xsts_token: &str, userhash: &str) -> crate::Result<
             query_params: HashMap::default(),
             body: Some(body),
         }),
+        client,
     )
     .await
 }
