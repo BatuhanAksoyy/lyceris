@@ -19,6 +19,7 @@ Lyceris is written with functional programming paradigm to achieve simplicity. I
 
 ## Supported Mod Loaders
 - [X] Forge (Above version 1.12.2)
+- [X] NeoForge
 - [X] Fabric
 - [X] Quilt
 
