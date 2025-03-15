@@ -174,12 +174,20 @@ pub async fn launch<T: Loader>(
         }
     });
 
+    config.custom_java_args.iter().for_each(|arg| {
+        arguments.push(replace_each(&variables, arg.clone()));
+    });
+
     arguments.push(meta.main_class.to_owned());
 
     meta_arguments.game.iter().for_each(|arg| {
         if let Element::String(e) = arg {
             arguments.push(replace_each(&variables, e.clone()))
         }
+    });
+
+    config.custom_args.iter().for_each(|arg| {
+        arguments.push(replace_each(&variables, arg.clone()));
     });
 
     let java_path = config
