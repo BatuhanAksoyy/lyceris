@@ -10,7 +10,7 @@ pub mod neoforge;
 use std::future::Future;
 use std::pin::Pin;
 
-pub trait Loader {
+pub trait Loader where Self: Send + Sync {
     fn merge<'a>(
         &'a self,
         config: &'a Config<()>,
