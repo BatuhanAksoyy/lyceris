@@ -245,7 +245,7 @@ impl<T: Loader> Config<T> {
             .join("Contents")
             .join("Home")
             .join("bin")
-            .join("javaw");
+            .join("java");
 
         #[cfg(not(target_os = "windows"))]
         {
