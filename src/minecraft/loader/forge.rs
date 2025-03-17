@@ -106,7 +106,7 @@ impl Loader for Forge {
 
             extract_specific_directory(
                 &installer_path,
-                "maven/",
+                "maven",
                 &config.game_dir.join("libraries"),
             )
             .ok();

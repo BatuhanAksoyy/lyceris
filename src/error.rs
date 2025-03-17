@@ -25,6 +25,8 @@ pub enum Error {
     #[error(transparent)]
     IO(#[from] tokio::io::Error),
     #[error(transparent)]
+    StripPrefix(#[from] std::path::StripPrefixError),
+    #[error(transparent)]
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
