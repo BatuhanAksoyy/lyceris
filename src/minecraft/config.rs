@@ -223,12 +223,19 @@ impl<T: Loader> Config<T> {
     }
 
     pub async fn get_java_path(&self, version: &JavaVersion) -> crate::Result<PathBuf> {
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "windows")]
         let java_path = self
             .get_runtime_path()
             .join(version.component.clone())
             .join("bin")
             .join("javaw");
+
+        #[cfg(target_os = "linux")]
+        let java_path = self
+            .get_runtime_path()
+            .join(version.component.clone())
+            .join("bin")
+            .join("java");
 
         #[cfg(target_os = "macos")]
         let java_path = self
@@ -238,7 +245,7 @@ impl<T: Loader> Config<T> {
             .join("Contents")
             .join("Home")
             .join("bin")
-            .join("java");
+            .join("javaw");
 
         #[cfg(not(target_os = "windows"))]
         {
