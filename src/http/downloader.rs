@@ -14,7 +14,10 @@ use tokio::{
 
 use crate::{
     error::Error,
-    minecraft::emitter::{Emit, Emitter, Event},
+    minecraft::{
+        emitter::{Emit, Emitter, Event},
+        install::FileType,
+    },
     util::retry::retry,
 };
 
@@ -134,7 +137,7 @@ pub async fn download<P: AsRef<Path>>(
 /// This function returns a `Result<(), Error>`. On success, it returns `Ok(())`. If an error occurs
 /// during the download process, it returns an `Err` containing an `Error` that describes the failure.
 pub async fn download_multiple<U, P>(
-    downloads: Vec<(U, P)>,
+    downloads: Vec<(U, P, FileType)>,
     emitter: Option<&Emitter>,
     client: Option<&Client>,
 ) -> crate::Result<()>
@@ -144,7 +147,7 @@ where
 {
     let total_files = downloads.len();
     let total_downloaded = Arc::new(Mutex::new(0));
-    let tasks = downloads.into_iter().map(|(url, destination)| {
+    let tasks = downloads.into_iter().map(|(url, destination, file_type)| {
         let total_downloaded = Arc::clone(&total_downloaded);
         async move {
             // Retry download logic
@@ -170,6 +173,7 @@ where
                                 destination.as_ref().to_string_lossy().into_owned(),
                                 *downloaded as u64,
                                 total_files as u64,
+                                file_type.to_string(),
                             ),
                         )
                         .await;

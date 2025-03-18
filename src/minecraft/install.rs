@@ -1,3 +1,4 @@
+use core::fmt;
 /// This module handles the installation of Minecraft, including downloading
 /// necessary files and managing the Java runtime environment.
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -41,10 +42,22 @@ use super::{
 
 /// Represents the type of file being downloaded.
 #[derive(Clone)]
-enum FileType {
+pub enum FileType {
     Asset { is_virtual: bool, is_map: bool },
     Library,
     Java,
+}
+
+impl fmt::Display for FileType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileType::Asset { .. } => {
+                write!(f, "Asset")
+            }
+            FileType::Library => write!(f, "Library"),
+            FileType::Java => write!(f, "Java"),
+        }
+    }
 }
 
 /// Represents a file to be downloaded, including its metadata.
@@ -512,7 +525,7 @@ async fn download_necessary(
     emitter: Option<&Emitter>,
     client: Option<&reqwest::Client>,
 ) -> crate::Result<()> {
-    let broken_ones: Vec<(String, PathBuf)> = files
+    let broken_ones: Vec<(String, PathBuf, FileType)> = files
         .par_iter()
         .filter_map(|file| {
             if file.url.is_empty() {
@@ -521,7 +534,7 @@ async fn download_necessary(
             if !file.path.exists()
                 || (!file.sha1.is_empty() && calculate_sha1(&file.path).ok()? != file.sha1)
             {
-                return Some((file.url.clone(), file.path.clone()));
+                return Some((file.url.clone(), file.path.clone(), file.r#type.clone()));
             }
             None
         })
