@@ -23,15 +23,34 @@ use super::Loader;
 
 const INSTALLER_JAR_ENDPOINT: &str = "https://maven.minecraftforge.net/net/minecraftforge/forge/{loader_version}/forge-{loader_version}-installer.jar";
 
+/// The `Forge` loader implementation for managing Minecraft installations
+/// using the Forge loader.
 pub struct Forge(pub String);
 
 impl From<Forge> for Box<dyn Loader> {
+    /// Converts a `Forge` instance into a boxed `Loader`.
+    ///
+    /// # Parameters
+    /// - `value`: The `Forge` instance to convert.
+    ///
+    /// # Returns
+    /// A boxed `Loader` instance.
     fn from(value: Forge) -> Self {
         Box::new(value)
     }
 }
 
 impl Loader for Forge {
+    /// Merges the configuration and version metadata with the Forge-specific
+    /// data.
+    ///
+    /// # Parameters
+    /// - `config`: The configuration for the installation process.
+    /// - `meta`: The version metadata to be merged.
+    /// - `emitter`: An optional emitter for logging progress.
+    ///
+    /// # Returns
+    /// A future that resolves to the updated version metadata.
     fn merge<'a>(
         &'a self,
         config: &'a Config<()>,
@@ -149,6 +168,16 @@ impl Loader for Forge {
     }
 }
 
+/// Downloads the installer for the Forge loader if it does not already exist.
+///
+/// # Parameters
+/// - `installer_path`: The path where the installer should be saved.
+/// - `version_name`: The version name for the installer.
+/// - `emitter`: An optional emitter for logging progress.
+/// - `client`: An optional HTTP client for making requests.
+///
+/// # Returns
+/// A result indicating success or failure of the download process.
 async fn download_installer(
     installer_path: &std::path::Path,
     version_name: &str,

@@ -1,6 +1,14 @@
 use std::{fs::{create_dir_all, File}, io::Read, path::{Path, PathBuf}};
 use zip::read::ZipArchive;
 
+/// Extracts all files from a ZIP archive to the specified output directory.
+///
+/// # Parameters
+/// - `zip_path`: The path to the ZIP file to extract.
+/// - `output_dir`: The directory where the files should be extracted.
+///
+/// # Returns
+/// A result indicating success or failure of the extraction operation.
 pub fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate::Result<()> {
     let file = File::open(zip_path)?;
 
@@ -24,6 +32,15 @@ pub fn extract_file<P: AsRef<Path>>(zip_path: &P, output_dir: &P) -> crate::Resu
     Ok(())
 }
 
+/// Extracts a specific file from a ZIP archive.
+///
+/// # Parameters
+/// - `zip_path`: The path to the ZIP file.
+/// - `file_name`: The name of the file to extract.
+/// - `output_file`: The path where the extracted file should be saved.
+///
+/// # Returns
+/// A result indicating success or failure of the extraction operation.
 pub fn extract_specific_file<P: AsRef<Path>>(
     zip_path: &P,
     file_name: &str,
@@ -57,6 +74,16 @@ pub fn extract_specific_file<P: AsRef<Path>>(
 
     Ok(())
 }
+
+/// Extracts a specific directory from a ZIP archive.
+///
+/// # Parameters
+/// - `zip_path`: The path to the ZIP file.
+/// - `dir_name`: The name of the directory to extract.
+/// - `output_dir`: The directory where the extracted files should be saved.
+///
+/// # Returns
+/// A result indicating success or failure of the extraction operation.
 pub fn extract_specific_directory<P: AsRef<Path>>(
     zip_path: &P,
     dir_name: &str,
@@ -111,6 +138,14 @@ pub fn extract_specific_directory<P: AsRef<Path>>(
     Ok(())
 }
 
+/// Reads a specific file from a JAR (ZIP) archive.
+///
+/// # Parameters
+/// - `zip_path`: The path to the ZIP file.
+/// - `file_name`: The name of the file to read.
+///
+/// # Returns
+/// A result containing the file's contents as a string or an error if the file is not found.
 pub fn read_file_from_jar<P: AsRef<Path>>(
     zip_path: &P,
     file_name: &str,

@@ -1,4 +1,6 @@
 /// A module for utility functions, including retry logic.
+///
+/// This module provides functions to retry asynchronous operations with specified delays.
 use std::time::Duration;
 
 /// Retries a given asynchronous operation a specified number of times with a delay.
@@ -17,7 +19,7 @@ use std::time::Duration;
 ///
 /// # Returns
 ///
-/// This function returns a `Result<T, UtilError>`. On success, it returns `Ok(result)`,
+/// This function returns a `Result<T, UtilError>`. On success, it returns `Ok(result)`
 /// where `result` is the successful output of the operation. If all retry attempts fail,
 /// it returns an `Err` containing a `UtilError` that describes the failure.
 ///

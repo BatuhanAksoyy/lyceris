@@ -8,17 +8,23 @@ use std::{
 
 use crate::{error::Error, http::fetch::fetch_with_options, util::base64::decode_base64};
 
+/// The client ID for Microsoft authentication.
 pub static CLIENT_ID: &str = "00000000402b5328";
+/// The redirect URI for Microsoft authentication.
 pub static REDIRECT_URI: &str = "https://login.live.com/oauth20_desktop.srf";
+/// The authorization URL for Microsoft authentication.
 pub static AUTH_URL: &str = "https://login.live.com/oauth20_authorize.srf";
+/// The token URL for Microsoft authentication.
 pub static TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 
+/// Represents the token received from Microsoft after authentication.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MSToken {
     access_token: String,
     refresh_token: String,
 }
 
+/// Represents the token received from Xbox Live after authentication.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 struct XboxToken {
@@ -27,6 +33,7 @@ struct XboxToken {
     token: String,
 }
 
+/// Represents the response from the Minecraft API after successful authentication.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MinecraftResponse {
     pub username: String,
@@ -34,6 +41,7 @@ pub struct MinecraftResponse {
     pub expires_in: u32,
 }
 
+/// Represents the token received from Xbox Live's XSTS service.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "PascalCase")]
 struct XstsToken {
@@ -41,16 +49,19 @@ struct XstsToken {
     display_claims: DisplayClaims,
 }
 
+/// Represents the display claims returned by the XSTS token.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct DisplayClaims {
     xui: Vec<Xui>,
 }
 
+/// Represents a user's Xbox Live identity.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Xui {
     uhs: String,
 }
 
+/// Represents a user's skin in Minecraft.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Skin {
     id: String,
@@ -61,6 +72,7 @@ struct Skin {
     alias: Option<String>,
 }
 
+/// Represents a user's cape in Minecraft.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Cape {
     id: String,
@@ -70,6 +82,7 @@ struct Cape {
     alias: Option<String>,
 }
 
+/// Represents a user's profile in Minecraft, including skins and capes.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserProfile {
     pub id: Option<String>,
@@ -82,12 +95,14 @@ pub struct UserProfile {
     error_message: Option<String>,
 }
 
+/// Represents the decoded JWT from Minecraft authentication.
 #[derive(Debug, Deserialize, Clone)]
 pub struct MCJWTDecoded {
     xuid: String,
     exp: u64,
 }
 
+/// Represents a Minecraft account with authentication details.
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct MinecraftAccount {
     pub xuid: String,
@@ -99,6 +114,10 @@ pub struct MinecraftAccount {
     pub client_id: String,
 }
 
+/// Creates the authorization link for Microsoft authentication.
+///
+/// # Returns
+/// A result containing the authorization URL as a string.
 pub fn create_link() -> crate::Result<String> {
     let auth_url = AuthUrl::new(AUTH_URL.to_string())?;
     let token_url = TokenUrl::new(TOKEN_URL.to_string())?;
@@ -121,6 +140,14 @@ pub fn create_link() -> crate::Result<String> {
     Ok(authorize_url.to_string())
 }
 
+/// Authenticates the user using the provided authorization code.
+///
+/// # Parameters
+/// - `code`: The authorization code received from the Microsoft authentication process.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the authenticated `MinecraftAccount`.
 pub async fn authenticate(
     code: String,
     client: &Client,
@@ -139,13 +166,21 @@ pub async fn authenticate(
     obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token, client).await
 }
 
+/// Refreshes the access token using the provided refresh token.
+///
+/// # Parameters
+/// - `refresh_token`: The refresh token used to obtain a new access token.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the refreshed `MinecraftAccount`.
 pub async fn refresh(
     refresh_token: String,
     client: &Client,
 ) -> crate::Result<MinecraftAccount> {
     let token_response = client
         .post(TOKEN_URL)
-        .form(&[
+        .form(&[ 
             ("client_id", CLIENT_ID),
             ("scope", "service::user.auth.xboxlive.com::MBI_SSL"),
             ("grant_type", "refresh_token"),
@@ -169,6 +204,16 @@ pub async fn refresh(
     obtain_minecraft_account(&xsts_token.token, &userhash, ms_token.refresh_token, client).await
 }
 
+/// Obtains the Minecraft account details using the provided tokens.
+///
+/// # Parameters
+/// - `xsts_token`: The XSTS token for authentication.
+/// - `userhash`: The user hash obtained from the XSTS token.
+/// - `refresh_token`: The refresh token for obtaining new access tokens.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the authenticated `MinecraftAccount`.
 async fn obtain_minecraft_account(
     xsts_token: &str,
     userhash: &str,
@@ -190,6 +235,14 @@ async fn obtain_minecraft_account(
     })
 }
 
+/// Retrieves the Microsoft token using the provided authorization code.
+///
+/// # Parameters
+/// - `code`: The authorization code received from the Microsoft authentication process.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the `MSToken`.
 async fn get_ms_token(code: &str, client: &Client) -> crate::Result<MSToken> {
     let token_response = client
         .post(TOKEN_URL)
@@ -207,8 +260,16 @@ async fn get_ms_token(code: &str, client: &Client) -> crate::Result<MSToken> {
     Ok(ms_token)
 }
 
+/// Retrieves the Xbox token using the provided Microsoft token.
+///
+/// # Parameters
+/// - `ms_token`: The Microsoft access token.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the `XboxToken`.
 async fn get_xbox_token(ms_token: &str, client: &Client) -> crate::Result<XboxToken> {
-    let body = serde_json::json!({
+    let body = serde_json::json!( {
         "Properties": {
             "AuthMethod": "RPS",
             "SiteName": "user.auth.xboxlive.com",
@@ -226,8 +287,16 @@ async fn get_xbox_token(ms_token: &str, client: &Client) -> crate::Result<XboxTo
     .await
 }
 
+/// Retrieves the XSTS token using the provided Xbox token.
+///
+/// # Parameters
+/// - `xbox_token`: The Xbox token for authentication.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the `XstsToken`.
 async fn get_xsts_token(xbox_token: &str, client: &Client) -> crate::Result<XstsToken> {
-    let body = serde_json::json!({
+    let body = serde_json::json!( {
         "Properties": {
             "SandboxId": "RETAIL",
             "UserTokens": [xbox_token]
@@ -244,6 +313,15 @@ async fn get_xsts_token(xbox_token: &str, client: &Client) -> crate::Result<Xsts
     .await
 }
 
+/// Fetches a token from the specified URL using the provided body.
+///
+/// # Parameters
+/// - `url`: The URL to fetch the token from.
+/// - `body`: The body of the request containing necessary parameters.
+/// - `client`: The HTTP client used for making requests.
+///
+/// # Returns
+/// A result containing the deserialized response of type `T`.
 async fn fetch_token<T: for<'de> Deserialize<'de>>(
     url: &str,
     body: serde_json::Value,
@@ -264,6 +342,15 @@ async fn fetch_token<T: for<'de> Deserialize<'de>>(
     Ok(token_response)
 }
 
+/// Returns player's Minecraft data.
+///
+/// # Parameters
+/// - `xsts_token`: Xbox token.
+/// - `userhash`: Hash value.
+/// - `client`: Reqwest client.
+/// 
+/// # Returns
+/// A result containing the `MinecraftResponse`.
 async fn get_minecraft_token(
     xsts_token: &str,
     userhash: &str,
@@ -286,6 +373,13 @@ async fn get_minecraft_token(
     .await
 }
 
+/// Parses login token.
+///
+/// # Parameters
+/// - `mc_token`: Token to be parsed.
+///
+/// # Returns
+/// A result containing the `MCJWTDecoded`.
 fn parse_login_token(mc_token: &str) -> crate::Result<MCJWTDecoded> {
     let base64_url = mc_token
         .split('.')
@@ -300,6 +394,13 @@ fn parse_login_token(mc_token: &str) -> crate::Result<MCJWTDecoded> {
     Ok(decoded)
 }
 
+/// Retrieves the Minecraft profile using the provided access token.
+///
+/// # Parameters
+/// - `access_token`: The access token for authentication.
+///
+/// # Returns
+/// A result containing the `UserProfile`.
 async fn get_profile(access_token: String) -> crate::Result<UserProfile> {
     let api_url = "https://api.minecraftservices.com/minecraft/profile";
     let client = Client::new();
@@ -324,6 +425,13 @@ async fn get_profile(access_token: String) -> crate::Result<UserProfile> {
     }
 }
 
+/// Validates the expiration time of the token.
+///
+/// # Parameters
+/// - `exp`: The expiration time of the token.
+///
+/// # Returns
+/// A boolean indicating whether the token is still valid.
 pub fn validate(exp: u64) -> bool {
     exp > SystemTime::now()
         .duration_since(UNIX_EPOCH)

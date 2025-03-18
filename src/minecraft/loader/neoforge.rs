@@ -19,6 +19,8 @@ use super::Loader;
 
 const INSTALLER_JAR_ENDPOINT: &str = "https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader_version}/neoforge-{loader_version}-installer.jar";
 
+/// The `NeoForge` loader implementation for managing Minecraft installations
+/// using the NeoForge loader.
 pub struct NeoForge(pub String);
 
 impl From<NeoForge> for Box<dyn Loader> {
@@ -28,6 +30,16 @@ impl From<NeoForge> for Box<dyn Loader> {
 }
 
 impl Loader for NeoForge {
+    /// Merges the configuration and version metadata with the NeoForge-specific
+    /// data.
+    ///
+    /// # Parameters
+    /// - `config`: The configuration for the installation process.
+    /// - `meta`: The version metadata to be merged.
+    /// - `emitter`: An optional emitter for logging progress.
+    ///
+    /// # Returns
+    /// A future that resolves to the updated version metadata.
     fn merge<'a>(
         &'a self,
         config: &'a Config<()>,
@@ -145,6 +157,16 @@ impl Loader for NeoForge {
     }
 }
 
+/// Downloads the installer for the NeoForge loader if it does not already exist.
+///
+/// # Parameters
+/// - `installer_path`: The path where the installer should be saved.
+/// - `version_name`: The version name for the installer.
+/// - `emitter`: An optional emitter for logging progress.
+/// - `client`: An optional HTTP client for making requests.
+///
+/// # Returns
+/// A result indicating success or failure of the download process.
 async fn download_installer(
     installer_path: &std::path::Path,
     version_name: &str,

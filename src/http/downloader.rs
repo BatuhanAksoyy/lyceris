@@ -30,16 +30,14 @@ use crate::{
 ///   the `IntoUrl` trait, such as a string slice or a `String`.
 /// - `destination`: A `PathBuf` representing the path where the downloaded file
 ///   will be saved.
-/// - `progression_callback`: A mutable closure that takes two `u64` parameters:
-///   the number of bytes downloaded so far and the total size of the file. This
-///   callback is called after each chunk of data is written to the file, allowing
-///   the caller to track the download progress.
+/// - `emitter`: An optional emitter for logging progress.
 ///
 /// # Returns
 ///
-/// This function returns a `Result<u64, DownloaderError>`. On success, it returns
-/// `Ok(u64)`. If an error occurs during the download process, it returns an
-/// `Err` containing a `DownloaderError` that describes the failure.
+/// This function returns a `Result<u64, Error>`. On success, it returns
+/// `Ok(u64)`, where `u64` is the total size of the downloaded file. If an error
+/// occurs during the download process, it returns an `Err` containing an `Error`
+/// that describes the failure.
 ///
 /// # Errors
 ///
@@ -129,15 +127,12 @@ pub async fn download<P: AsRef<Path>>(
 /// # Parameters
 ///
 /// - `downloads`: A vector of tuples containing the URLs and their corresponding destination paths.
-/// - `progression_callback`: A mutable closure that takes four `u64` parameters:
-///   the number of bytes downloaded so far for the current file, the total bytes downloaded so far,
-///   the current file index, and the total number of files. This callback is called after each chunk of data
-///   is written to the file, allowing the caller to track the download progress.
+/// - `emitter`: An optional emitter for logging progress.
 ///
 /// # Returns
 ///
-/// This function returns a `Result<(), HttpError>`. On success, it returns `Ok(())`. If an error occurs
-/// during the download process, it returns an `Err` containing a `HttpError` that describes the failure.
+/// This function returns a `Result<(), Error>`. On success, it returns `Ok(())`. If an error occurs
+/// during the download process, it returns an `Err` containing an `Error` that describes the failure.
 pub async fn download_multiple<U, P>(
     downloads: Vec<(U, P)>,
     emitter: Option<&Emitter>,

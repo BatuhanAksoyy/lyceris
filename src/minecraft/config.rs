@@ -36,6 +36,7 @@ impl Profile {
     }
 }
 
+/// Configuration structure for managing Minecraft installation settings.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config<T: Loader> {
     pub game_dir: PathBuf,
@@ -222,6 +223,13 @@ impl<T: Loader> Config<T> {
         self.game_dir.join("libraries")
     }
 
+    /// Gets the path to the Java executable for the specified version.
+    ///
+    /// # Parameters
+    /// - `version`: The Java version for which to retrieve the path.
+    ///
+    /// # Returns
+    /// A result containing the path to the Java executable.
     pub async fn get_java_path(&self, version: &JavaVersion) -> crate::Result<PathBuf> {
         #[cfg(target_os = "windows")]
         let java_path = self
@@ -257,32 +265,60 @@ impl<T: Loader> Config<T> {
         Ok(java_path)
     }
 
+    /// Gets the path to the versions directory.
+    ///
+    /// # Returns
+    /// The path to the versions directory.
     pub fn get_versions_path(&self) -> PathBuf {
         self.game_dir.join("versions")
     }
 
+    /// Gets the path to the assets directory.
+    ///
+    /// # Returns
+    /// The path to the assets directory.
     pub fn get_assets_path(&self) -> PathBuf {
         self.game_dir.join("assets")
     }
 
+    /// Gets the path to the natives directory.
+    ///
+    /// # Returns
+    /// The path to the natives directory.
     pub fn get_natives_path(&self) -> PathBuf {
         self.game_dir.join("natives")
     }
 
+    /// Gets the path to the runtime directory.
+    ///
+    /// # Returns
+    /// The path to the runtime directory.
     pub fn get_runtime_path(&self) -> PathBuf {
         self.runtime_dir
             .clone()
             .unwrap_or_else(|| self.game_dir.join("runtimes"))
     }
 
+    /// Gets the path to the indexes directory.
+    ///
+    /// # Returns
+    /// The path to the indexes directory.
     pub fn get_indexes_path(&self) -> PathBuf {
         self.get_assets_path().join("indexes")
     }
 
+    /// Gets the path to the version directory.
+    ///
+    /// # Returns
+    /// The path to the version directory.
     pub fn get_version_path(&self) -> PathBuf {
         self.get_versions_path().join(self.get_version_name())
     }
 
+    /// Gets the path to the version JSON file.
+    ///
+    /// # Returns
+    /// The path to the version JSON file.
     pub fn get_version_json_path(&self) -> PathBuf {
         self.get_version_path()
             .join(format!("{}.json", self.get_version_name()))

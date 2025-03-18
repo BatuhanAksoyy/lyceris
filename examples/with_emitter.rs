@@ -7,6 +7,10 @@ use lyceris::minecraft::{
     launch::launch,
 };
 
+/// Example of using the Emitter to track download progress and launch Minecraft.
+///
+/// This example demonstrates how to set up an Emitter to listen for download
+/// progress events and launch the Minecraft game with a specified configuration.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Emitter uses `EventEmitter` inside of it

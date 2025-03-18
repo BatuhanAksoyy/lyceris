@@ -5,73 +5,36 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-/// Asynchronously reads a JSON file and deserializes its contents into a specified type.
-///
-/// # Type Parameters
-///
-/// - `T`: The type to which the JSON data will be deserialized. This type must implement the
-///   `DeserializeOwned` trait from Serde, which allows for deserialization of owned types.
+/// Reads a JSON file from the specified path and deserializes it into the specified type.
 ///
 /// # Parameters
-///
-/// - `file_path`: A `String` representing the path to the JSON file to be read.
+/// - `path`: The path to the JSON file to read.
 ///
 /// # Returns
-///
-/// This function returns a `Result<T, UtilError>`, where:
-/// - `Ok(T)`: Contains the deserialized data of type `T` if the operation is successful.
-/// - `Err(UtilError)`: Contains an error of type `UtilError` if the operation fails. This can occur
-///   due to issues such as file not found, read errors, or JSON deserialization errors.
-///
-/// # Errors
-///
-/// The function may return an error if:
-/// - The specified file does not exist or cannot be opened.
-/// - There is an error reading the file's contents.
-/// - The contents of the file cannot be deserialized into the specified type `T`.
-pub async fn read_json<T: DeserializeOwned, P: AsRef<Path>>(file_path: P) -> crate::Result<T> {
-    let mut file = File::open(file_path).await?;
+/// A result containing the deserialized data on success, or an error if the file could not be read or parsed.
+pub async fn read_json<T: DeserializeOwned>(path: &Path) -> crate::Result<T> {
+    let mut file = File::open(path).await?;
     let mut contents = String::new();
     file.read_to_string(&mut contents).await?;
     Ok(serde_json::from_str(&contents)?)
 }
 
-/// Asynchronously writes a JSON file and deserializes its contents into a specified type.
-///
-/// # Type Parameters
-///
-/// - `T`: The type to which the JSON data will be deserialized. This type must implement the
-///   `DeserializeOwned` trait from Serde, which allows for deserialization of owned types.
+/// Writes the specified data to a JSON file at the given path.
 ///
 /// # Parameters
-///
-/// - `file_path`: A `AsRef<Path>` representing the path to the JSON file to be read.
-/// - `value`: A value that serializable.
+/// - `path`: The path where the JSON file should be written.
+/// - `data`: The data to serialize and write to the file.
 ///
 /// # Returns
-///
-/// This function returns a `Result<T, UtilError>`, where:
-/// - `Ok(())`: If successfull.
-/// - `Err(UtilError)`: Contains an error of type `UtilError` if the operation fails. This can occur
-///   due to issues such as file not found, read errors, or JSON deserialization errors.
-///
-/// # Errors
-///
-/// The function may return an error if:
-/// - The specified file does not exist or cannot be opened.
-/// - There is an error reading the file's contents.
-/// - The contents of the file cannot be deserialized into the specified type `T`.
-pub async fn write_json<T: Serialize, P: AsRef<Path>>(
-    file_path: P,
-    value: &T,
-) -> crate::Result<()> {
-    let json_string = serde_json::to_string(value)?;
-    if let Some(parent) = file_path.as_ref().parent() {
+/// A result indicating success or failure of the write operation.
+pub async fn write_json<T: Serialize>(path: &Path, data: &T) -> crate::Result<()> {
+    let json_string = serde_json::to_string(data)?;
+    if let Some(parent) = path.parent() {
         if !parent.is_dir() {
             create_dir_all(parent).await?;
         }
     }
-    let mut file = File::create(file_path).await?;
+    let mut file = File::create(path).await?;
     file.write_all(json_string.as_bytes()).await?;
     Ok(())
 }

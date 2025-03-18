@@ -17,6 +17,14 @@ use crate::{
 use super::{config::Config, CLASSPATH_SEPARATOR};
 use super::{emitter::Emitter, loader::Loader};
 
+/// Launches the Minecraft game with the specified configuration and arguments.
+///
+/// # Parameters
+/// - `config`: The configuration for the Minecraft launch.
+/// - `emitter`: An optional emitter for logging progress.
+///
+/// # Returns
+/// A result containing the child process that was spawned to run the game.
 pub async fn launch<T: Loader>(
     config: &Config<T>,
     emitter: Option<&Emitter>,

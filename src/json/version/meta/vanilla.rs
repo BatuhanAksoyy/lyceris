@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::custom::{Data, Processor};
 
+/// Represents the metadata for a Minecraft version, including its libraries and processors.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionMeta {
@@ -30,7 +31,6 @@ pub struct VersionMeta {
     pub r#type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub processors: Option<Vec<Processor>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<HashMap<String, Data>>
 }
 
@@ -127,7 +127,8 @@ fn default_java_version() -> String {
     "jre-legacy".to_string()
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/// Represents a library required for a Minecraft version.
+#[derive(Serialize, Deserialize)]
 pub struct Library {
     pub downloads: Option<LibraryDownloads>,
     pub name: String,

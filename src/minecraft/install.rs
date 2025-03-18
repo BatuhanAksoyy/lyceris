@@ -1,3 +1,5 @@
+/// This module handles the installation of Minecraft, including downloading
+/// necessary files and managing the Java runtime environment.
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     env::consts::{ARCH, OS},
@@ -37,6 +39,7 @@ use super::{
     parse::{parse_lib_path, ParseRule},
 };
 
+/// Represents the type of file being downloaded.
 #[derive(Clone)]
 enum FileType {
     Asset { is_virtual: bool, is_map: bool },
@@ -44,6 +47,7 @@ enum FileType {
     Java,
 }
 
+/// Represents a file to be downloaded, including its metadata.
 #[derive(Clone)]
 struct DownloadFile {
     file_name: String,
@@ -53,6 +57,15 @@ struct DownloadFile {
     r#type: FileType,
 }
 
+/// Installs the specified version of Minecraft by downloading necessary files
+/// and setting up the environment.
+///
+/// # Parameters
+/// - `config`: The configuration for the installation process.
+/// - `emitter`: An optional emitter for logging progress.
+///
+/// # Returns
+/// A result indicating success or failure of the installation process.
 pub async fn install<T: Loader>(
     config: &Config<T>,
     emitter: Option<&Emitter>,
@@ -66,10 +79,10 @@ pub async fn install<T: Loader>(
         if let Some(loader) = &config.loader {
             meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
         }
-        write_json(version_json_path, &meta).await?;
+        write_json(&version_json_path, &meta).await?;
         meta
     } else {
-        read_json(version_json_path).await?
+        read_json(&version_json_path).await?
     };
 
     let asset_index_path = config
@@ -77,24 +90,11 @@ pub async fn install<T: Loader>(
         .join(format!("{}.json", &meta.asset_index.id));
     let asset_index: AssetIndex = if !asset_index_path.exists() {
         let asset_index = fetch(&meta.asset_index.url, config.client.as_ref()).await?;
-        write_json(asset_index_path, &asset_index).await?;
+        write_json(&asset_index_path, &asset_index).await?;
         asset_index
     } else {
-        read_json(asset_index_path).await?
+        read_json(&asset_index_path).await?
     };
-
-    let version_jar_path = config.get_version_jar_path();
-    if !version_jar_path.exists()
-        || !calculate_sha1(&version_jar_path)?.eq(&meta.downloads.client.sha1)
-    {
-        download(
-            &meta.downloads.client.url,
-            version_jar_path,
-            emitter,
-            config.client.as_ref(),
-        )
-        .await?;
-    }
 
     let natives_path = config.get_natives_path().join(&config.version);
     if !natives_path.is_dir() {
@@ -146,6 +146,15 @@ pub async fn install<T: Loader>(
     Ok(())
 }
 
+/// Fetches the version metadata for the specified version from the manifest.
+///
+/// # Parameters
+/// - `manifest`: The version manifest containing available versions.
+/// - `version`: The version to fetch metadata for.
+/// - `client`: An optional HTTP client for making requests.
+///
+/// # Returns
+/// The version metadata for the specified version.
 async fn fetch_version_meta(
     manifest: &VersionManifest,
     version: &str,
@@ -161,6 +170,14 @@ async fn fetch_version_meta(
     fetch(&version_url, client).await
 }
 
+/// Gets the download URL for the specified Java version based on the operating system and architecture.
+///
+/// # Parameters
+/// - `java_manifest`: The manifest containing Java version information.
+/// - `java_version`: The specific Java version to retrieve the URL for.
+///
+/// # Returns
+/// The download URL for the specified Java version.
 fn get_java_url(java_manifest: &JavaManifest, java_version: &JavaVersion) -> crate::Result<String> {
     let os = if OS == "macos" { "mac-os" } else { OS };
     let arch = match ARCH {
@@ -193,6 +210,19 @@ fn get_java_url(java_manifest: &JavaManifest, java_version: &JavaVersion) -> cra
         .cloned()
 }
 
+/// Builds a map of files to be downloaded based on the asset index, version metadata, and Java files.
+///
+/// # Parameters
+/// - `asset_index`: The asset index containing file information.
+/// - `meta`: The version metadata.
+/// - `java_files`: The Java file manifest.
+/// - `runtime_path`: The path to the Java runtime.
+/// - `config`: The configuration for the installation process.
+/// - `check_natives`: A flag indicating whether to check for native files.
+/// - `to_be_extracted`: A mutable vector to store files that need to be extracted.
+///
+/// # Returns
+/// A vector of `DownloadFile` representing the files to be downloaded.
 fn build_file_map(
     asset_index: &AssetIndex,
     meta: &VersionMeta,
@@ -202,6 +232,25 @@ fn build_file_map(
     check_natives: bool,
     to_be_extracted: &mut Vec<vanilla::File>,
 ) -> crate::Result<Vec<DownloadFile>> {
+    let version_jar_path = config.get_version_jar_path();
+    let version_download = if !version_jar_path.exists()
+        || !calculate_sha1(&version_jar_path)?.eq(&meta.downloads.client.sha1)
+    {
+        Some(DownloadFile {
+            file_name: version_jar_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+            r#type: FileType::Library,
+            path: version_jar_path,
+            sha1: meta.downloads.client.sha1.clone(),
+            url: meta.downloads.client.url.clone(),
+        })
+    } else {
+        None
+    };
+
     let asset_files = asset_index
         .objects
         .iter()
@@ -303,9 +352,23 @@ fn build_file_map(
         })
         .collect::<Vec<_>>();
 
-    Ok([asset_files, library_files, java_files].concat())
+    Ok([
+        version_download.into_iter().collect::<Vec<_>>(),
+        asset_files,
+        library_files,
+        java_files,
+    ]
+    .concat())
 }
 
+/// Executes any processors defined in the version metadata, if they exist.
+///
+/// # Parameters
+/// - `meta`: The version metadata containing processor information.
+/// - `config`: The configuration for the installation process.
+///
+/// # Returns
+/// A result indicating success or failure of the processor execution.
 async fn execute_processors_if_exists(
     meta: &mut VersionMeta,
     config: &Config<impl Loader>,
@@ -426,11 +489,22 @@ async fn execute_processors_if_exists(
         }
     }
 
-    write_json(config.get_version_json_path(), &meta).await?;
+    write_json(&config.get_version_json_path(), &meta).await?;
 
     Ok(())
 }
 
+/// Downloads the necessary files based on the provided file list.
+///
+/// # Parameters
+/// - `files`: A vector of files to be downloaded.
+/// - `game_dir`: The directory where the game is installed.
+/// - `legacy`: A flag indicating whether to handle legacy assets.
+/// - `emitter`: An optional emitter for logging progress.
+/// - `client`: An optional HTTP client for making requests.
+///
+/// # Returns
+/// A result indicating success or failure of the download process.
 async fn download_necessary(
     files: Vec<DownloadFile>,
     game_dir: &Path,

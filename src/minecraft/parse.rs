@@ -4,11 +4,20 @@ use crate::{error::Error, json::version::meta::vanilla::{Action, Name, Rule}};
 
 use super::TARGET_ARCH;
 
+/// Trait for parsing rules related to operating system and architecture.
 pub trait ParseRule {
+    /// Parses the rules and determines if the current environment is allowed.
+    ///
+    /// # Returns
+    /// A boolean indicating whether the current environment meets the rules.
     fn parse_rule(&self) -> bool;
 }
 
 impl ParseRule for [Rule] {
+    /// Parses the rules for an array of `Rule` and determines if the current environment is allowed.
+    ///
+    /// # Returns
+    /// A boolean indicating whether the current environment meets the rules.
     fn parse_rule(&self) -> bool {
         let parsed_os: Name = match OS {
             "linux" => Name::Linux,
@@ -58,6 +67,10 @@ impl ParseRule for [Rule] {
 }
 
 impl ParseRule for Option<Vec<Rule>> {
+    /// Parses the rules for an optional vector of `Rule` and determines if the current environment is allowed.
+    ///
+    /// # Returns
+    /// A boolean indicating whether the current environment meets the rules.
     fn parse_rule(&self) -> bool {
         match self {
             Some(rules) => {
@@ -112,6 +125,13 @@ impl ParseRule for Option<Vec<Rule>> {
     }
 }
 
+/// Parses the library path from the given artifact string.
+///
+/// # Parameters
+/// - `artifact`: The artifact string in the format "group:name:version[@classifier]".
+///
+/// # Returns
+/// A `Result` containing the parsed library path as a string or an error if the format is invalid.
 pub fn parse_lib_path(artifact: &str) -> crate::Result<String> {
     let name_items: Vec<&str> = artifact.split(':').collect();
     if name_items.len() < 3 {
