@@ -109,6 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 ## Roadmap
 - [ ] Download resumption
+- [ ] Multiple instance manager
 
 See the [open issues](https://github.com/cubidron/lyceris/issues) for a full list of proposed features (and known issues).
 ## License
