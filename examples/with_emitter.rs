@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     emitter
         .on(
             Event::MultipleDownloadProgress,
-            |(current, total): (u64, u64)| {
+            |(_, current, total): (String, u64, u64)| {
                 println!("Downloading {}/{}", current, total);
             },
         )
