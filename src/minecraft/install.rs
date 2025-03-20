@@ -46,6 +46,7 @@ pub enum FileType {
     Asset { is_virtual: bool, is_map: bool },
     Library,
     Java,
+    Custom
 }
 
 impl fmt::Display for FileType {
@@ -56,6 +57,7 @@ impl fmt::Display for FileType {
             }
             FileType::Library => write!(f, "Library"),
             FileType::Java => write!(f, "Java"),
+            FileType::Custom => write!(f, "Custom")
         }
     }
 }
