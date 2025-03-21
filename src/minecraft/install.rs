@@ -46,7 +46,7 @@ pub enum FileType {
     Asset { is_virtual: bool, is_map: bool },
     Library,
     Java,
-    Custom
+    Custom,
 }
 
 impl fmt::Display for FileType {
@@ -57,7 +57,7 @@ impl fmt::Display for FileType {
             }
             FileType::Library => write!(f, "Library"),
             FileType::Java => write!(f, "Java"),
-            FileType::Custom => write!(f, "Custom")
+            FileType::Custom => write!(f, "Custom"),
         }
     }
 }
@@ -150,9 +150,11 @@ pub async fn install<T: Loader>(
     if !to_be_extracted.is_empty() {
         create_dir_all(&natives_path).await?;
         for extract in to_be_extracted {
-            let path = PathBuf::from(extract.path.unwrap());
-            download(&extract.url, &path, emitter, config.client.as_ref()).await?;
-            extract_file(&path, &natives_path)?;
+            if let Some(path) = extract.path {
+                let path = PathBuf::from(path);
+                download(&extract.url, &path, emitter, config.client.as_ref()).await?;
+                extract_file(&path, &natives_path)?;
+            }
         }
     }
 

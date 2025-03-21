@@ -219,7 +219,7 @@ pub async fn launch<T: Loader>(
         let emitter = emitter.clone();
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
-            while let Some(line) = reader.next_line().await.unwrap() {
+            while let Ok(Some(line)) = reader.next_line().await {
                 emitter.emit(Event::Console, line).await;
             }
         });
