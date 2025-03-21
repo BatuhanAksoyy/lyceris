@@ -15,7 +15,7 @@ An open source Minecraft launcher library written in Rust.
 
 ## About The Project
 
-Lyceris is written with functional programming paradigm to achieve simplicity. It supports Microsoft authentication, loaders like Fabric, Quilt (more will be implemented soon), multi-threaded control system and download parallelism. It also automatically downloads necessary Java version. Library name comes from a character from Sword Art Online anime.
+Lyceris is written with functional programming paradigm to achieve simplicity. It supports Microsoft authentication, loaders like Fabric, Quilt, Forge and NeoForge, multi-threaded control system and download parallelism. It also automatically downloads necessary Java version. Library name comes from a character from Sword Art Online anime.
 
 ## Supported Mod Loaders
 - [X] Forge (Above version 1.12.2)
@@ -40,7 +40,7 @@ use std::env;
 use lyceris::minecraft::{
     config::ConfigBuilder,
     emitter::{Emitter, Event},
-    install::install,
+    install::{install, FileType},
     launch::launch,
 };
 
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     emitter
         .on(
             Event::MultipleDownloadProgress,
-            |(_, current, total): (String, u64, u64)| {
+            |(_, current, total, _): (String, u64, u64, FileType)| {
                 println!("Downloading {}/{}", current, total);
             },
         )
