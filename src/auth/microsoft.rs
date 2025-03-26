@@ -135,6 +135,7 @@ pub fn create_link() -> crate::Result<String> {
         .add_scope(Scope::new(
             "service::user.auth.xboxlive.com::MBI_SSL".to_string(),
         ))
+        .add_extra_param("prompt", "select_account")
         .url();
 
     Ok(authorize_url.to_string())
