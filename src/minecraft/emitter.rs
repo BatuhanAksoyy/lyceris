@@ -18,6 +18,12 @@ pub enum Event {
     SingleDownloadProgress,
     /// Event triggered for console output.
     Console,
+    /// Event triggered for process running.
+    AlreadyRunning,
+    /// Event triggered for unexpected exit.
+    UnexpectedExit,
+    /// Event triggered for a exit.
+    Exit
 }
 
 /// Trait for emitting events.
@@ -33,6 +39,18 @@ pub trait Emit {
 
 /// Implementation of the `Emit` trait for an optional reference to `Emitter`.
 impl Emit for Option<&Emitter> {
+    async fn emit<T: Serialize>(&self, event: Event, data: T) {
+        if let Some(emitter) = self {
+            emitter
+                .wrap
+                .lock()
+                .await
+                .emit(&format!("{:?}", event), data);
+        }
+    }
+}
+
+impl Emit for Option<Emitter> {
     async fn emit<T: Serialize>(&self, event: Event, data: T) {
         if let Some(emitter) = self {
             emitter

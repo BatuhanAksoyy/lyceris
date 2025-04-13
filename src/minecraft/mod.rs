@@ -4,6 +4,7 @@ pub mod loader;
 pub mod parse;
 pub mod emitter;
 pub mod config;
+pub mod manager;
 
 #[cfg(target_os = "windows")]
 pub const TARGET_OS: &str = "windows";

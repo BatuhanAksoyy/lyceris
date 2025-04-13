@@ -22,6 +22,8 @@ pub enum Error {
     Fail(String),
     #[error("Unsupported architecture")]
     UnsupportedArchitecture,
+    #[error("Instance not found with id: {0}")]
+    InstanceNotFound(String),
     #[error(transparent)]
     IO(#[from] tokio::io::Error),
     #[error(transparent)]

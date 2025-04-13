@@ -1,81 +1,3 @@
-/// The main library module for the Minecraft management system.
-///
-/// This library provides functionalities for managing Minecraft installations,
-/// including authentication, downloading necessary files, and launching the game.
-///
-/// # Modules
-/// - `auth`: Handles authentication with Microsoft and Xbox Live.
-/// - `error`: Defines error types used throughout the library.
-/// - `http`: Provides HTTP utilities for making requests.
-/// - `json`: Contains utilities for handling JSON data.
-/// - `minecraft`: Manages Minecraft-specific functionalities, including installation and launching.
-/// - `util`: Contains various utility functions and types.
-///
-/// # Examples
-///
-/// You can find examples of how to use this library in the `examples` directory.
-/// For instance, the `with_emitter` example demonstrates how to track download progress
-/// and launch Minecraft. Below is the code for the `with_emitter` example:
-///
-/// ```rust
-/// use std::env;
-///
-/// use lyceris::minecraft::{
-///     config::ConfigBuilder,
-///     emitter::{Emitter, Event},
-///     install::install,
-///     launch::launch,
-/// };
-///
-/// /// Example of using the Emitter to track download progress and launch Minecraft.
-/// ///
-/// /// This example demonstrates how to set up an Emitter to listen for download
-/// /// progress events and launch the Minecraft game with a specified configuration.
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let emitter = Emitter::default();
-///
-///     emitter
-///         .on(
-///             Event::SingleDownloadProgress,
-///             |(path, current, total): (String, u64, u64)| {
-///                 println!("Downloading {} - {}/{}", path, current, total);
-///             },
-///         )
-///         .await;
-///
-///     emitter
-///         .on(
-///             Event::MultipleDownloadProgress,
-///             |(current, total): (u64, u64)| {
-///                 println!("Downloading {}/{}", current, total);
-///             },
-///         )
-///         .await;
-///
-///     emitter
-///         .on(Event::Console, |line: String| {
-///             println!("Line: {}", line);
-///         })
-///         .await;
-///
-///     let current_dir = env::current_dir()?; 
-///     let config = ConfigBuilder::new(
-///         current_dir.join("game"),
-///         "1.21.4".into(),
-///         lyceris::auth::AuthMethod::Offline {
-///             username: "Lyceris".into(),
-///             uuid: None,
-///         },
-///     )
-///     .build();
-///
-///     install(&config, Some(&emitter)).await?;
-///     launch(&config, Some(&emitter)).await?.wait().await?;
-///
-///     Ok(())
-/// }
-/// ```
 pub mod auth;
 pub mod error;
 pub mod http;
@@ -94,3 +16,121 @@ pub use util::json::{read_json, write_json};
 
 /// A type alias for results returned by library functions.
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(test)]
+mod test {
+    use std::{path::PathBuf, thread::park};
+
+    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, manager};
+
+    #[tokio::test]
+    async fn test() {
+        let first_config = ConfigBuilder::new(
+            PathBuf::from("C:\\Users\\Batuhan\\AppData\\Roaming\\.minecraft"),
+            "1.16.5".to_string(),
+            crate::AuthMethod::Offline {
+                username: "Miate".to_string(),
+                uuid: None,
+            },
+        )
+        .build();
+
+        let second_config = ConfigBuilder::new(
+            PathBuf::from("C:\\Users\\Batuhan\\AppData\\Roaming\\.minecraft"),
+            "1.21.1".to_string(),
+            crate::AuthMethod::Offline {
+                username: "Miate".to_string(),
+                uuid: None,
+            },
+        )
+        .build();
+
+        let emitter = Emitter::default();
+        let emitter2 = Emitter::default();
+
+        emitter
+            .on(
+                crate::minecraft::emitter::Event::SingleDownloadProgress,
+                |(path, current, total): (String, u64, u64)| {
+                    println!("Downloading {} - {}/{}", path, current, total);
+                },
+            )
+            .await;
+
+        emitter
+            .on(
+                crate::minecraft::emitter::Event::MultipleDownloadProgress,
+                |(current, total): (u64, u64)| {
+                    println!("Downloading {}/{}", current, total);
+                },
+            )
+            .await;
+
+        emitter
+            .on(crate::minecraft::emitter::Event::Console, |line: String| {
+                println!("Line: {}", line);
+            })
+            .await;
+
+        emitter
+            .on(crate::minecraft::emitter::Event::AlreadyRunning, |_: ()| {
+                println!("Already running");
+            })
+            .await;
+
+        emitter
+            .on(crate::minecraft::emitter::Event::Exit, |_: ()| {
+                println!("Exit");
+            })
+            .await;
+
+        emitter2
+            .on(
+                crate::minecraft::emitter::Event::SingleDownloadProgress,
+                |(path, current, total): (String, u64, u64)| {
+                    println!("Downloading {} - {}/{}", path, current, total);
+                },
+            )
+            .await;
+
+        emitter2
+            .on(
+                crate::minecraft::emitter::Event::MultipleDownloadProgress,
+                |(current, total): (u64, u64)| {
+                    println!("Downloading {}/{}", current, total);
+                },
+            )
+            .await;
+
+        emitter2
+            .on(crate::minecraft::emitter::Event::Console, |line: String| {
+                println!("Line: {}", line);
+            })
+            .await;
+
+        emitter2
+            .on(crate::minecraft::emitter::Event::AlreadyRunning, |_: ()| {
+                println!("Already running");
+            })
+            .await;
+
+        emitter2
+            .on(crate::minecraft::emitter::Event::Exit, |_: ()| {
+                println!("Exit");
+            })
+            .await;
+
+        let mut manager = manager::Manager::default();
+
+        let first_instance_id = manager.create_instance(first_config, Some(&emitter));
+        let second_instance_id = manager.create_instance(second_config, Some(&emitter));
+
+        manager.start_instance(&first_instance_id).await.unwrap();
+        manager.start_instance(&second_instance_id).await.unwrap();
+        println!("finish");
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+
+        manager.stop_instance(&first_instance_id).await.unwrap();
+    }
+}
