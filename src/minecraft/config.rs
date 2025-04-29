@@ -45,13 +45,13 @@ pub struct Config<T: Loader> {
     pub memory: Option<Memory>,
     pub version_name: Option<String>,
     pub profile: Option<Profile>,
-    pub loader: Option<T>,
+    pub loader: Option<Box<T>>,
     pub java_version: Option<String>,
     pub runtime_dir: Option<PathBuf>,
     pub custom_java_args: Vec<String>,
     pub custom_args: Vec<String>,
     #[serde(skip)]
-    pub client: Option<Client>
+    pub client: Option<Client>,
 }
 
 impl<T: Loader> Config<T> {
@@ -68,7 +68,7 @@ impl<T: Loader> Config<T> {
             runtime_dir: self.runtime_dir.clone(),
             custom_java_args: self.custom_java_args.clone(),
             custom_args: self.custom_args.clone(),
-            client: self.client.clone()
+            client: self.client.clone(),
         }
     }
 }
@@ -81,13 +81,13 @@ pub struct ConfigBuilder<T: Loader = ()> {
     memory: Option<Memory>,
     version_name: Option<String>,
     pub profile: Option<Profile>,
-    loader: Option<T>,
+    loader: Option<Box<T>>,
     java_version: Option<String>,
     runtime_dir: Option<PathBuf>,
     custom_java_args: Vec<String>,
     custom_args: Vec<String>,
     #[serde(skip)]
-    client: Option<Client>  
+    client: Option<Client>,
 }
 
 impl ConfigBuilder<()> {
@@ -102,13 +102,13 @@ impl ConfigBuilder<()> {
             authentication,
             memory: None,
             version_name: None,
-            loader: None,
+            loader: Some(Box::new(())),
             java_version: None,
             profile: None,
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
-            client: None
+            client: None,
         }
     }
 }
@@ -132,12 +132,12 @@ impl<T: Loader> ConfigBuilder<T> {
             memory: self.memory,
             version_name: self.version_name,
             profile: self.profile,
-            loader: Some(loader),
+            loader: Some(loader.into()),
             java_version: self.java_version,
             runtime_dir: self.runtime_dir,
             custom_java_args: self.custom_java_args,
             custom_args: self.custom_args,
-            client: self.client
+            client: self.client,
         }
     }
 
@@ -184,7 +184,7 @@ impl<T: Loader> ConfigBuilder<T> {
             profile: self.profile,
             custom_java_args: self.custom_java_args,
             custom_args: self.custom_args,
-            client: self.client
+            client: self.client,
         }
     }
 }
@@ -203,7 +203,7 @@ impl<T: Loader> Config<T> {
             runtime_dir: None,
             custom_java_args: Vec::new(),
             custom_args: Vec::new(),
-            client: None
+            client: None,
         }
     }
 

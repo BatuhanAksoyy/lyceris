@@ -21,7 +21,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 mod test {
     use std::{path::PathBuf, thread::park};
 
-    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, loader, manager};
+    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, install::FileType, loader, manager};
 
     #[tokio::test]
     async fn test() {
@@ -33,6 +33,7 @@ mod test {
                 uuid: None,
             },
         )
+        .loader(Box::new(()))
         .build();
 
         let second_config = ConfigBuilder::new(
@@ -43,7 +44,7 @@ mod test {
                 uuid: None,
             },
         )
-        .loader(loader::forge::Forge("43.2.0".to_string()).into())
+        .loader(loader::forge::Forge("52.1.1".to_string()).into())
         .build();
 
         let emitter = Emitter::default();
@@ -61,7 +62,7 @@ mod test {
         emitter
             .on(
                 crate::minecraft::emitter::Event::MultipleDownloadProgress,
-                |(current, total): (u64, u64)| {
+                |(_, current, total, _): (String, u64, u64, FileType)| {
                     println!("Downloading {}/{}", current, total);
                 },
             )
@@ -80,42 +81,6 @@ mod test {
             .await;
 
         emitter
-            .on(crate::minecraft::emitter::Event::Exit, |_: ()| {
-                println!("Exit");
-            })
-            .await;
-
-        emitter2
-            .on(
-                crate::minecraft::emitter::Event::SingleDownloadProgress,
-                |(path, current, total): (String, u64, u64)| {
-                    println!("Downloading {} - {}/{}", path, current, total);
-                },
-            )
-            .await;
-
-        emitter2
-            .on(
-                crate::minecraft::emitter::Event::MultipleDownloadProgress,
-                |(current, total): (u64, u64)| {
-                    println!("Downloading {}/{}", current, total);
-                },
-            )
-            .await;
-
-        emitter2
-            .on(crate::minecraft::emitter::Event::Console, |line: String| {
-                println!("Line: {}", line);
-            })
-            .await;
-
-        emitter2
-            .on(crate::minecraft::emitter::Event::AlreadyRunning, |_: ()| {
-                println!("Already running");
-            })
-            .await;
-
-        emitter2
             .on(crate::minecraft::emitter::Event::Exit, |_: ()| {
                 println!("Exit");
             })
@@ -130,8 +95,10 @@ mod test {
         manager.start_instance(&second_instance_id).await.unwrap();
         println!("finish");
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
 
-        manager.stop_instance(&first_instance_id).await.unwrap();
+        manager.stop_all_instances().await.unwrap();
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(1500)).await;
     }
 }
