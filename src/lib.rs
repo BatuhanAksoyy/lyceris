@@ -21,7 +21,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 mod test {
     use std::{path::PathBuf, thread::park};
 
-    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, manager};
+    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, loader, manager};
 
     #[tokio::test]
     async fn test() {
@@ -43,6 +43,7 @@ mod test {
                 uuid: None,
             },
         )
+        .loader(loader::forge::Forge("43.2.0".to_string()).into())
         .build();
 
         let emitter = Emitter::default();
