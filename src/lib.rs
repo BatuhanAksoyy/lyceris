@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod error;
 pub mod http;
+pub mod integration;
 pub mod json;
 pub mod minecraft;
 pub mod util;
@@ -21,84 +22,45 @@ pub type Result<T> = std::result::Result<T, Error>;
 mod test {
     use std::{path::PathBuf, thread::park};
 
-    use crate::minecraft::{config::ConfigBuilder, emitter::Emitter, install::FileType, loader, manager};
+    use crate::{
+        integration::modrinth::install_modrinth_pack,
+        minecraft::{config::ConfigBuilder, emitter::{Emitter, Event}, install::FileType, loader, manager},
+    };
 
     #[tokio::test]
     async fn test() {
-        let first_config = ConfigBuilder::new(
-            PathBuf::from("C:\\Users\\Batuhan\\AppData\\Roaming\\.minecraft"),
-            "1.16.5".to_string(),
-            crate::AuthMethod::Offline {
-                username: "Miate".to_string(),
-                uuid: None,
-            },
-        )
-        .loader(Box::new(()))
-        .build();
-
-        let second_config = ConfigBuilder::new(
-            PathBuf::from("C:\\Users\\Batuhan\\AppData\\Roaming\\.minecraft"),
-            "1.21.1".to_string(),
-            crate::AuthMethod::Offline {
-                username: "Miate".to_string(),
-                uuid: None,
-            },
-        )
-        .loader(loader::forge::Forge("52.1.1".to_string()).into())
-        .build();
-
         let emitter = Emitter::default();
-        let emitter2 = Emitter::default();
 
+        // Single download progress event send when
+        // a file is being downloaded.
+        // emitter
+        //     .on(
+        //         Event::SingleDownloadProgress,
+        //         |(path, current, total): (String, u64, u64)| {
+        //             println!("Downloading {} - {}/{}", path, current, total);
+        //         },
+        //     )
+        //     .await;
+    
+        // Multiple download progress event send when
+        // multiple files are being downloaded.
+        // Java, libraries and assets are downloaded in parallel and
+        // this event is triggered for each file.
         emitter
             .on(
-                crate::minecraft::emitter::Event::SingleDownloadProgress,
-                |(path, current, total): (String, u64, u64)| {
-                    println!("Downloading {} - {}/{}", path, current, total);
-                },
-            )
-            .await;
-
-        emitter
-            .on(
-                crate::minecraft::emitter::Event::MultipleDownloadProgress,
-                |(_, current, total, _): (String, u64, u64, FileType)| {
+                Event::MultipleDownloadProgress,
+                |(_, current, total, _): (String, u64, u64, String)| {
                     println!("Downloading {}/{}", current, total);
                 },
             )
             .await;
 
-        emitter
-            .on(crate::minecraft::emitter::Event::Console, |line: String| {
-                println!("Line: {}", line);
-            })
-            .await;
-
-        emitter
-            .on(crate::minecraft::emitter::Event::AlreadyRunning, |_: ()| {
-                println!("Already running");
-            })
-            .await;
-
-        emitter
-            .on(crate::minecraft::emitter::Event::Exit, |_: ()| {
-                println!("Exit");
-            })
-            .await;
-
-        let mut manager = manager::Manager::default();
-
-        let first_instance_id = manager.create_instance(first_config, Some(&emitter));
-        let second_instance_id = manager.create_instance(second_config, Some(&emitter));
-
-        manager.start_instance(&first_instance_id).await.unwrap();
-        manager.start_instance(&second_instance_id).await.unwrap();
-        println!("finish");
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
-
-        manager.stop_all_instances().await.unwrap();
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(1500)).await;
+        install_modrinth_pack(
+            PathBuf::from("C:\\Users\\Batuhan\\Desktop\\WORKS\\lyceris\\target\\test-modrinth"),
+            "cqaC80tF".to_string(),
+            Some(&emitter),
+        )
+        .await
+        .unwrap();
     }
 }

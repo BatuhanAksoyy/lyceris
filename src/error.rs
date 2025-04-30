@@ -24,6 +24,8 @@ pub enum Error {
     UnsupportedArchitecture,
     #[error("Instance not found with id: {0}")]
     InstanceNotFound(String),
+    #[error("Integration error: {0}")]
+    Integration(String),
     #[error(transparent)]
     IO(#[from] tokio::io::Error),
     #[error(transparent)]
