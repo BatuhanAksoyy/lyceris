@@ -65,18 +65,17 @@ pub async fn install_modrinth_pack(
             ))
         })?;
 
-    let file_path = temp_dir.join(&primary_file.filename);
-    download(&primary_file.url, &file_path, emitter, None).await?;
+    let mr_file_path = temp_dir.join(&primary_file.filename);
+    download(&primary_file.url, &mr_file_path, emitter, None).await?;
 
-    extract_specific_directory(&file_path, "overrides", &root_path)?;
+    extract_specific_directory(&mr_file_path, "overrides", &root_path)?;
 
-    let index_content = read_file_from_jar(&file_path, "modrinth.index.json")?;
+    let index_content = read_file_from_jar(&mr_file_path, "modrinth.index.json")?;
     let index = serde_json::from_str::<ModrinthIndex>(&index_content)?;
 
     let files_to_download = index
         .files
         .iter()
-        .filter(|file| !file.downloads.is_empty())
         .filter_map(|file| {
             let file_path = root_path.join(&file.path);
             let sha1 = file
@@ -99,7 +98,7 @@ pub async fn install_modrinth_pack(
         .collect::<Vec<_>>();
 
     download_multiple(files_to_download, emitter, None).await?;
-    remove_file(file_path)?;
+    remove_file(mr_file_path)?;
 
     Ok(())
 }
