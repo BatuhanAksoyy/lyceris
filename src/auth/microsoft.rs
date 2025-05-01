@@ -141,41 +141,6 @@ pub fn create_link() -> crate::Result<String> {
     Ok(authorize_url.to_string())
 }
 
-/// Creates the authorization link for Microsoft authentication using `code id_token`.
-///
-/// # Returns
-/// A result containing the authorization URL as a string.
-pub fn create_link_with_id_token() -> crate::Result<String> {
-    use oauth2::{
-        basic::BasicClient, AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, TokenUrl,
-    };
-    use uuid::Uuid;
-
-    let auth_url = AuthUrl::new(AUTH_URL.to_string())?;
-    let token_url = TokenUrl::new(TOKEN_URL.to_string())?;
-
-    let client = BasicClient::new(
-        ClientId::new(CLIENT_ID.to_string()),
-        None,
-        auth_url,
-        Some(token_url),
-    )
-    .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string())?);
-
-    let nonce = Uuid::new_v4().to_string();
-
-    let (authorize_url, _) = client
-        .authorize_url(CsrfToken::new_random)
-        .add_scope(Scope::new("openid".to_string()))
-        .add_extra_param("response_type", "code id_token")
-        .add_extra_param("nonce", &nonce)
-        .add_extra_param("prompt", "select_account")
-        .url();
-
-    Ok(authorize_url.to_string())
-}
-
-
 /// Authenticates the user using the provided authorization code.
 ///
 /// # Parameters
