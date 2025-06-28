@@ -164,6 +164,68 @@ pub async fn install<T: Loader>(
     Ok(())
 }
 
+/// Installs the specified Java version by downloading necessary Java runtime files.
+///
+/// # Parameters
+/// - `client`: An optional HTTP client for making requests.
+/// - `java_version`: The Java version to install.
+/// - `runtime_path`: The path where the Java runtime should be installed.
+/// - `emitter`: An optional emitter for logging progress.
+///
+/// # Returns
+/// A result indicating success or failure of the Java installation process.
+pub async fn install_java(
+    client: Option<&reqwest::Client>,
+    java_version: &JavaVersion,
+    runtime_path: &PathBuf,
+    emitter: Option<&Emitter>,
+) -> crate::Result<()> {
+    // Fetch the Java manifest
+    let java_manifest: JavaManifest = fetch(JAVA_MANIFEST_ENDPOINT, client).await?;
+    
+    // Get the download URL for the specified Java version
+    let java_url = get_java_url(&java_manifest, java_version)?;
+    
+    // Fetch the Java file manifest
+    let java_files: JavaFileManifest = fetch(java_url, client).await?;
+    
+    // Create the runtime directory if it doesn't exist
+    create_dir_all(runtime_path).await?;
+    
+    // Build the list of Java files to download
+    let java_files_to_download: Vec<DownloadFile> = java_files
+        .files
+        .iter()
+        .filter_map(|(name, file)| {
+            let path = runtime_path.join(name.replace("/", MAIN_SEPARATOR_STR));
+            file.downloads.as_ref().map(|downloads| DownloadFile {
+                file_name: name
+                    .split(MAIN_SEPARATOR_STR)
+                    .last()
+                    .unwrap_or(name)
+                    .to_string(),
+                path,
+                sha1: downloads.raw.sha1.clone(),
+                url: downloads.raw.url.clone(),
+                r#type: FileType::Java,
+            })
+        })
+        .collect();
+    
+    // Download the Java files
+    download_necessary(
+        java_files_to_download,
+        runtime_path,
+        false, // Java files don't need legacy handling
+        emitter,
+        client,
+    )
+    .await?;
+    
+    Ok(())
+}
+
+
 /// Fetches the version metadata for the specified version from the manifest.
 ///
 /// # Parameters
