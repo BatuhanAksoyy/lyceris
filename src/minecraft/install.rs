@@ -2,7 +2,6 @@ use core::fmt;
 /// This module handles the installation of Minecraft, including downloading
 /// necessary files and managing the Java runtime environment.
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
 use std::{
     env::consts::{ARCH, OS},
     fs,
@@ -42,7 +41,7 @@ use super::{
 };
 
 /// Represents the type of file being downloaded.
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone)]
 pub enum FileType {
     Asset { is_virtual: bool, is_map: bool },
     Library,

@@ -142,9 +142,7 @@ impl<R: Loader> Instance<R> {
                     eprintln!("Error monitoring process: {}", e);
                 }
                 let mut process = process_clone.lock().await;
-                println!("received lock");
                 *process = None;
-                println!("Process exited, set to None");
             });
         } else {
             self.emitter
@@ -187,7 +185,6 @@ async fn monitor_process(
                 emitter
                     .emit(crate::minecraft::emitter::Event::Exit, ())
                     .await;
-                println!("Process exited {:?}", child.id());
                 break;
             }
         } else {
