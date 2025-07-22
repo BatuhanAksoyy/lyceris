@@ -55,10 +55,16 @@ pub async fn download<P: AsRef<Path>>(
     client: Option<&Client>,
 ) -> crate::Result<u64> {
     // Send a get request to the given url.
-    emitter.emit(
-        Event::SingleDownloadProgress,
-        (destination.as_ref().to_string_lossy().into_owned(), 0, 0),
-    ).await;
+                emitter
+                    .emit(
+                        Event::SingleDownloadProgress,
+                        (
+                            destination.as_ref().to_string_lossy().into_owned(),
+                            0 as u64,
+                            0 as u64,
+                        ),
+                    )
+                    .await;
 
     let default_client = Client::default();
     let client = client.unwrap_or(&default_client);
