@@ -82,7 +82,7 @@ pub mod http;
 pub mod json;
 pub mod minecraft;
 pub mod util;
-
+pub mod modrinth;
 // Re-export commonly used items for easier access
 pub use auth::AuthMethod;
 pub use error::Error;
