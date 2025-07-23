@@ -117,6 +117,7 @@ pub async fn launch<T: Loader>(
     );
 
     let libraries_path = config.get_libraries_path();
+    // If using a loader, add theseus.jar as a temp file to the classpath
     insert_var("${classpath}", {
         let mut cp: Vec<String> = meta
             .libraries
@@ -139,6 +140,26 @@ pub async fn launch<T: Loader>(
                 })
             })
             .collect();
+
+        // Check if using a loader (not vanilla)
+        let is_loader = config.loader.is_some();
+        if is_loader {
+            use std::io::Write;
+            // Use the static THESEUS_JAR bytes from modrinth::mod
+            let theseus_jar: &[u8] = crate::modrinth::THESEUS_JAR;
+            // Create a temp file for theseus.jar
+            let mut temp_file = tempfile::Builder::new()
+                .prefix("theseus-")
+                .suffix(".jar")
+                .tempfile()
+                .expect("Failed to create temp theseus.jar");
+            temp_file.write_all(theseus_jar).expect("Failed to write theseus.jar to temp file");
+            let temp_path = temp_file.into_temp_path();
+            let temp_path_str = temp_path.to_string_lossy().to_string();
+            // Keep temp file alive by leaking it (will be cleaned up on process exit)
+            let _ = temp_path.keep();
+            cp.push(temp_path_str);
+        }
 
         cp.push(config.get_version_jar_path().to_string_lossy().into_owned());
 
@@ -166,6 +187,9 @@ pub async fn launch<T: Loader>(
         )),
         None => arguments.push("-Xmx2G".to_string()),
     }
+    // Add --add-opens argument for JVM
+    arguments.push("--add-opens".to_string());
+    arguments.push("java.base/java.lang.reflect=ALL-UNNAMED".to_string());
 
     meta_arguments.jvm.iter().for_each(|arg| match arg {
         Element::String(e) => arguments.push(replace_each(&variables, e.clone())),
@@ -186,7 +210,13 @@ pub async fn launch<T: Loader>(
         arguments.push(replace_each(&variables, arg.clone()));
     });
 
-    arguments.push(meta.main_class.to_owned());
+    // Use theseus main class if loader, otherwise vanilla main class
+    if config.loader.is_some() {
+        arguments.push("com.modrinth.theseus.MinecraftLaunch".to_string());
+        arguments.push(meta.main_class.to_owned());
+    } else {
+        arguments.push(meta.main_class.to_owned());
+    }
 
     meta_arguments.game.iter().for_each(|arg| {
         if let Element::String(e) = arg {
@@ -204,26 +234,58 @@ pub async fn launch<T: Loader>(
 
     create_dir_all(current_dir)?;
 
+    println!("Launching Minecraft with arguments: {:?}", arguments);
+
+
     let mut child = Command::new(java_path)
         .args(arguments)
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::piped())
         .current_dir(current_dir)
         .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        use tokio::io::AsyncWriteExt;
+        stdin.write_all(b"launch\n").await?;
+        stdin.flush().await?;
+    }
 
     let stdout = child
         .stdout
         .take()
         .ok_or_else(|| Error::Take("Child -> stdout".to_string()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| Error::Take("Child -> stderr".to_string()))?;
 
-    if let Some(emitter) = emitter {
-        let emitter = emitter.clone();
-        tokio::spawn(async move {
-            let mut reader = BufReader::new(stdout).lines();
-            while let Ok(Some(line)) = reader.next_line().await {
-                emitter.emit(Event::Console, line).await;
+    // Write stdout and stderr to a file before termination, print stderr
+    let file = tokio::fs::File::create("minecraft_stdout.log").await?;
+    let file2 = file.try_clone().await?;
+    let emitter_opt = emitter.cloned();
+    tokio::spawn(async move {
+        let mut reader = BufReader::new(stdout).lines();
+        let mut file = file;
+        while let Ok(Some(line)) = reader.next_line().await {
+            if let Some(ref emitter) = emitter_opt {
+                emitter.emit(Event::Console, line.clone()).await;
             }
-        });
-    }
+            use tokio::io::AsyncWriteExt;
+            let _ = file.write_all(line.as_bytes()).await;
+            let _ = file.write_all(b"\n").await;
+        }
+    });
+    tokio::spawn(async move {
+        let mut reader = BufReader::new(stderr).lines();
+        let mut file = file2;
+        while let Ok(Some(line)) = reader.next_line().await {
+            println!("[stderr] {}", line);
+            use tokio::io::AsyncWriteExt;
+            let _ = file.write_all(line.as_bytes()).await;
+            let _ = file.write_all(b"\n").await;
+        }
+    });
 
     Ok(child)
 }
