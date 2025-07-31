@@ -86,41 +86,41 @@ pub async fn install<T: Loader>(
     emitter: Option<&Emitter>,
 ) -> crate::Result<()> {
     let manifest: VersionManifest =
-        fetch(VERSION_MANIFEST_ENDPOINT, config.client.as_ref()).await?;
+        fetch(VERSION_MANIFEST_ENDPOINT, config.client.as_ref()).await.unwrap();
     let version_json_path = config.get_version_json_path();
     let mut meta =
-        fetch_version_meta(&manifest, &config.version, config.client.as_ref()).await?;
+        fetch_version_meta(&manifest, &config.version, config.client.as_ref()).await.unwrap();
     if let Some(loader) = &config.loader {
-        meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
+        meta = loader.merge(&config.into_vanilla(), meta, emitter).await.unwrap();
     }
-    write_json(&version_json_path, &meta).await?;
+    write_json(&version_json_path, &meta).await.unwrap();
 
     let asset_index_path = config
         .get_indexes_path()
         .join(format!("{}.json", &meta.asset_index.id));
     let asset_index: AssetIndex = if !asset_index_path.exists() {
-        let asset_index = fetch(&meta.asset_index.url, config.client.as_ref()).await?;
-        write_json(&asset_index_path, &asset_index).await?;
+        let asset_index = fetch(&meta.asset_index.url, config.client.as_ref()).await.unwrap();
+        write_json(&asset_index_path, &asset_index).await.unwrap();
         asset_index
     } else {
-        read_json(&asset_index_path).await?
+        read_json(&asset_index_path).await.unwrap()
     };
 
     let natives_path = config.get_natives_path().join(&config.version);
     if !natives_path.is_dir() {
-        create_dir_all(&natives_path).await?;
+        create_dir_all(&natives_path).await.unwrap();
     }
 
-    let check_natives = fs::read_dir(&natives_path)?.count() == 0;
+    let check_natives = fs::read_dir(&natives_path).unwrap().count() == 0;
     let mut to_be_extracted = Vec::with_capacity(10);
 
     let default_java_version = JavaVersion::default();
     let java_version = meta.java_version.as_ref().unwrap_or(&default_java_version);
     let runtime_path = config.get_runtime_path().join(&java_version.component);
 
-    let java_manifest: JavaManifest = fetch(JAVA_MANIFEST_ENDPOINT, config.client.as_ref()).await?;
-    let java_url = get_java_url(&java_manifest, java_version)?;
-    let java_files: JavaFileManifest = fetch(java_url, config.client.as_ref()).await?;
+    let java_manifest: JavaManifest = fetch(JAVA_MANIFEST_ENDPOINT, config.client.as_ref()).await.unwrap();
+    let java_url = get_java_url(&java_manifest, java_version).unwrap();
+    let java_files: JavaFileManifest = fetch(java_url, config.client.as_ref()).await.unwrap();
 
     let file_map = build_file_map(
         &asset_index,
@@ -130,7 +130,7 @@ pub async fn install<T: Loader>(
         config,
         check_natives,
         &mut to_be_extracted,
-    )?;
+    ).unwrap();
 
     download_necessary(
         file_map,
@@ -140,20 +140,20 @@ pub async fn install<T: Loader>(
         emitter,
         config.client.as_ref(),
     )
-    .await?;
+    .await.unwrap();
 
     if !to_be_extracted.is_empty() {
-        create_dir_all(&natives_path).await?;
+        create_dir_all(&natives_path).await.unwrap();
         for extract in to_be_extracted {
             if let Some(path) = extract.path {
                 let path = PathBuf::from(path);
-                download(&extract.url, &path, emitter, config.client.as_ref()).await?;
-                extract_file(&path, &natives_path)?;
+                download(&extract.url, &path, emitter, config.client.as_ref()).await.unwrap();
+                extract_file(&path, &natives_path).unwrap();
             }
         }
     }
 
-    execute_processors_if_exists(&mut meta, config).await?;
+    execute_processors_if_exists(&mut meta, config).await.unwrap();
 
     Ok(())
 }
@@ -176,7 +176,7 @@ async fn fetch_version_meta(
         .versions
         .iter()
         .find(|v| v.id == version)
-        .ok_or_else(|| Error::UnknownVersion("Vanilla".to_string()))?
+        .ok_or_else(|| Error::UnknownVersion("Vanilla".to_string())).unwrap()
         .url
         .clone();
     fetch(&version_url, client).await
@@ -213,9 +213,9 @@ fn get_java_url(java_manifest: &JavaManifest, java_version: &JavaVersion) -> cra
     };
     java_manifest
         .get(&os_arch)
-        .ok_or_else(|| Error::NotFound("Java map by operating system".to_string()))?
+        .ok_or_else(|| Error::NotFound("Java map by operating system".to_string())).unwrap()
         .get(&java_version.component)
-        .ok_or_else(|| Error::UnknownVersion("Java version".to_string()))?
+        .ok_or_else(|| Error::UnknownVersion("Java version".to_string())).unwrap()
         .first()
         .ok_or_else(|| Error::NotFound("Java gamecore".to_string()))
         .map(|entry| &entry.manifest.url)
@@ -246,7 +246,7 @@ fn build_file_map(
 ) -> crate::Result<Vec<DownloadFile>> {
     let version_jar_path = config.get_version_jar_path();
     let version_download = if !version_jar_path.exists()
-        || !calculate_sha1(&version_jar_path)?.eq(&meta.downloads.client.sha1)
+        || !calculate_sha1(&version_jar_path).unwrap().eq(&meta.downloads.client.sha1)
     {
         Some(DownloadFile {
             file_name: version_jar_path
@@ -289,7 +289,7 @@ fn build_file_map(
             if !lib.rules.parse_rule() {
                 return None;
             }
-            let downloads = lib.downloads.as_ref()?;
+            let downloads = lib.downloads.as_ref().unwrap();
             if check_natives {
                 if let Some(classifiers) = &downloads.classifiers {
                     let classifier = match OS {
@@ -327,7 +327,7 @@ fn build_file_map(
                     }
                 }
             }
-            let artifact = downloads.artifact.as_ref()?;
+            let artifact = downloads.artifact.as_ref().unwrap();
             Some(DownloadFile {
                 file_name: PathBuf::from(artifact.url.clone())
                     .file_name()
@@ -339,7 +339,7 @@ fn build_file_map(
                 path: config
                     .game_dir
                     .join("libraries")
-                    .join(artifact.path.as_ref()?.replace("/", MAIN_SEPARATOR_STR)),
+                    .join(artifact.path.as_ref().unwrap().replace("/", MAIN_SEPARATOR_STR)),
                 r#type: FileType::Library,
             })
         })
@@ -389,7 +389,7 @@ async fn execute_processors_if_exists(
         let data = meta
             .data
             .as_ref()
-            .ok_or_else(|| Error::NotFound("Forge Installer Data".to_string()))?;
+            .ok_or_else(|| Error::NotFound("Forge Installer Data".to_string())).unwrap();
 
         let libraries_path = config.get_libraries_path();
 
@@ -410,7 +410,7 @@ async fn execute_processors_if_exists(
                 .filter_map(|arg| {
                     Some(
                         libraries_path
-                            .join(parse_lib_path(arg).ok()?)
+                            .join(parse_lib_path(arg).ok().unwrap())
                             .to_string_lossy()
                             .into_owned(),
                     )
@@ -420,17 +420,17 @@ async fn execute_processors_if_exists(
 
             let main_class = read_file_from_jar(
                 &libraries_path
-                    .join(parse_lib_path(&processor.jar)?)
+                    .join(parse_lib_path(&processor.jar).unwrap())
                     .to_string_lossy()
                     .into_owned(),
                 "META-INF/MANIFEST.MF",
-            )?
+            ).unwrap()
             .lines()
             .find(|line| line.starts_with("Main-Class:"))
-            .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string()))?
+            .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string())).unwrap()
             .split(":")
             .last()
-            .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string()))?
+            .ok_or_else(|| Error::NotFound("Main-Class of processor".to_string())).unwrap()
             .trim()
             .to_string();
 
@@ -473,7 +473,7 @@ async fn execute_processors_if_exists(
                             .as_ref()
                             .unwrap_or(&JavaVersion::default()),
                     )
-                    .await?,
+                    .await.unwrap(),
             )
             .arg("-cp")
             .arg(format!(
@@ -481,14 +481,14 @@ async fn execute_processors_if_exists(
                 classpath,
                 CLASSPATH_SEPARATOR,
                 libraries_path
-                    .join(parse_lib_path(&processor.jar)?)
+                    .join(parse_lib_path(&processor.jar).unwrap())
                     .to_string_lossy()
                     .into_owned()
             ))
             .arg(main_class)
             .args(args)
             .output()
-            .await?;
+            .await.unwrap();
 
             if child.status.success() {
                 processor.success = true;
@@ -501,7 +501,7 @@ async fn execute_processors_if_exists(
         }
     }
 
-    write_json(&config.get_version_json_path(), &meta).await?;
+    write_json(&config.get_version_json_path(), &meta).await.unwrap();
 
     Ok(())
 }
@@ -531,7 +531,7 @@ async fn download_necessary(
                 return None;
             }
             if !file.path.exists()
-                || (!file.sha1.is_empty() && calculate_sha1(&file.path).ok()? != file.sha1)
+                || (!file.sha1.is_empty() && calculate_sha1(&file.path).ok().unwrap() != file.sha1)
             {
                 return Some((file.url.clone(), file.path.clone(), file.r#type.clone()));
             }
@@ -539,7 +539,7 @@ async fn download_necessary(
         })
         .collect();
 
-    download_multiple(broken_ones, emitter, client).await?;
+    download_multiple(broken_ones, emitter, client).await.unwrap();
 
     if legacy {
         files.par_iter().try_for_each(|file| {
@@ -562,7 +562,7 @@ async fn download_necessary(
                     }
                 }
 
-                if !target_path.exists() || calculate_sha1(&target_path).ok()? != file.sha1 {
+                if !target_path.exists() || calculate_sha1(&target_path).ok().unwrap() != file.sha1 {
                     fs::copy(&file.path, &target_path).ok();
                 }
 
