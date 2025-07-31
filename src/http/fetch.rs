@@ -17,7 +17,8 @@ pub async fn fetch<T: DeserializeOwned>(
 ) -> crate::Result<T> {
     // Call the fetch function with default options
     let default_client = Client::default();
-    println!("Fetching: {}", url.into_url()?.as_str());
+    let url = url.into_url()?;
+    println!("Fetching: {:?}", &url);
     fetch_with_options::<T, ()>(url, None, client.unwrap_or(&default_client)).await
 }
 
