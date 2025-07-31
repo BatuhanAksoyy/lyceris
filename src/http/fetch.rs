@@ -80,10 +80,6 @@ pub async fn fetch_with_options<T: DeserializeOwned, B: Serialize + Default>(
     // Send the request and await the response
     let response: Response = request_builder.send().await?;
 
-    let response_text = response.text().await?;
-
-    println!("{:?}", &response_text);
-
     // Deserialize the response body
-    Ok(serde_json::from_str(&response_text)?)
+    Ok(response.json::<T>().await?)
 }
