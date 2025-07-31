@@ -88,17 +88,12 @@ pub async fn install<T: Loader>(
     let manifest: VersionManifest =
         fetch(VERSION_MANIFEST_ENDPOINT, config.client.as_ref()).await?;
     let version_json_path = config.get_version_json_path();
-    let mut meta: VersionMeta = if !version_json_path.exists() {
-        let mut meta =
-            fetch_version_meta(&manifest, &config.version, config.client.as_ref()).await?;
-        if let Some(loader) = &config.loader {
-            meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
-        }
-        write_json(&version_json_path, &meta).await?;
-        meta
-    } else {
-        read_json(&version_json_path).await?
-    };
+    let mut meta =
+        fetch_version_meta(&manifest, &config.version, config.client.as_ref()).await?;
+    if let Some(loader) = &config.loader {
+        meta = loader.merge(&config.into_vanilla(), meta, emitter).await?;
+    }
+    write_json(&version_json_path, &meta).await?;
 
     let asset_index_path = config
         .get_indexes_path()
