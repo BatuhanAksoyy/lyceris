@@ -17,8 +17,6 @@ pub async fn fetch<T: DeserializeOwned>(
 ) -> crate::Result<T> {
     // Call the fetch function with default options
     let default_client = Client::default();
-    let url = url.into_url()?;
-    println!("Fetching: {:?}", &url);
     fetch_with_options::<T, ()>(url, None, client.unwrap_or(&default_client)).await
 }
 
@@ -58,6 +56,8 @@ pub async fn fetch_with_options<T: DeserializeOwned, B: Serialize + Default>(
     options: Option<FetchOptions<B>>,
     client: &Client,
 ) -> crate::Result<T> {
+    let url = url.into_url()?;
+    println!("Fetching: {:?}", &url);
     let options = options.unwrap_or_default(); // Use default options if none provided
 
     let mut request_builder = client.request(options.method.clone(), url);
