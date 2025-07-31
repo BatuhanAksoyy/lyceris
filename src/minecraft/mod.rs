@@ -32,7 +32,7 @@ pub const JAVA_MANIFEST_ENDPOINT: &str =
     "https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json";
 
 pub const VERSION_MANIFEST_ENDPOINT: &str =
-    "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
+    "https://launcher.baso.network/download/version_manifest_v2.json";
     
 pub const RESOURCES_ENDPOINT: &str = 
     "https://resources.download.minecraft.net";
